@@ -1,0 +1,159 @@
+<!-- ================= DASHBOARD ================= -->
+<div class="page" id="p-dashboard" hidden>
+  <section class="band" style="border-bottom:0;padding-top:0">
+    <div class="wrap">
+
+      <div class="dash-head">
+        <div>
+          <p class="who" id="dbWho">Welcome back</p>
+          <h1 id="dbName">Engineer</h1>
+        </div>
+        <div class="spacer"></div>
+        <div style="min-width:260px;flex:0 0 auto">
+          <p class="eyebrow" style="margin-bottom:11px">Awaken Audio &mdash; overall</p>
+          <div class="pbar lg"><i id="dbBar" style="width:0%"></i></div>
+          <div style="display:flex;justify-content:space-between;margin-top:9px;
+                      font-family:var(--mono);font-size:11px;color:var(--dim)">
+            <span id="dbPctText">0% complete</span>
+            <span id="dbTopicCount">&mdash;</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="continue" id="dbContinue" hidden>
+        <div>
+          <div class="lab" id="dbContLab">Continue training</div>
+          <h3 id="dbContTitle">&mdash;</h3>
+          <p id="dbContText"></p>
+        </div>
+        <div class="spacer"></div>
+        <a class="btn primary" id="dbContBtn" href="#/arcade">Resume &#8594;</a>
+      </div>
+
+      <div class="starthere" id="dbStart" hidden>
+        <div>
+          <div class="lab">Before anything technical</div>
+          <h3>START HERE &#183; Turning Knowledge Into Skill</h3>
+          <p>Five minutes on why finishing a module is not the same as being
+             able to do the thing &mdash; and how the Framework closes that gap.</p>
+        </div>
+        <div class="spacer"></div>
+        <a class="btn primary" href="#/arcade" id="dbStartBtn">Open START HERE &#8594;</a>
+      </div>
+
+      <p class="eyebrow" style="margin-top:38px">Training topics</p>
+      <div class="colhead">
+        <span>Topic</span><span>Learn &#183; Listen &#183; Practice &#183; Apply &#183; Reflect</span>
+        <span>Progress</span><span class="r">Status</span>
+      </div>
+      <div class="topiclist" id="dbTopics"></div>
+
+      <div class="refl" id="dbReflect" hidden>
+        <h3>Reflect</h3>
+        <p>The step people skip, and the reason somebody can run forty services
+           and only improve during the first three. Pick a topic you have
+           actually used, and be honest &mdash; this goes to whoever is
+           developing you, not to a leaderboard.</p>
+        <label for="rfTopic">Topic</label>
+        <div class="sel"><select id="rfTopic"></select></div>
+        <label for="rfWell">What went well?</label>
+        <textarea id="rfWell" placeholder="What actually worked when you used this in a room?"></textarea>
+        <label for="rfWork">What needs work?</label>
+        <textarea id="rfWork" placeholder="Where did it get away from you, or take too long?"></textarea>
+        <label for="rfNext">What are you changing before the next one?</label>
+        <textarea id="rfNext" placeholder="One specific thing."></textarea>
+        <div class="foot">
+          <button class="btn primary" id="rfSave">Save reflection</button>
+          <span class="hint" id="rfHint"></span>
+        </div>
+      </div>
+
+      <p class="eyebrow" style="margin-top:44px">Additional courses</p>
+      <div class="coursegrid" id="dbCourses"></div>
+
+      <p class="note" style="margin-top:12px;color:var(--dim);font-size:13px">
+        Progress saves to your account as you go, so you can start on the booth
+        laptop and pick it up on your phone.
+      </p>
+    </div>
+  </section>
+</div>
+
+<!-- ================= COURSES ================= -->
+<div class="page" id="p-courses" hidden>
+  <section class="band" style="border-bottom:0">
+    <div class="wrap">
+      <p class="eyebrow">Courses</p>
+      <h1>One church.<br>One production culture.</h1>
+      <p class="lead" style="margin-top:18px;max-width:60ch">
+        Audio is live now. The rest of the paths are being written the same way &mdash;
+        learn it, hear it, then prove it.
+      </p>
+      <div class="coursegrid" id="csGrid" style="margin-top:36px"></div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= ADMIN ================= -->
+<div class="page" id="p-admin" hidden>
+  <section class="band" style="border-bottom:0;padding-top:0">
+    <div class="wrap">
+
+      <!-- roster -->
+      <div id="adRoster">
+        <div class="dash-head">
+          <div>
+            <p class="who">Admin</p>
+            <h1>Your engineers</h1>
+          </div>
+          <div class="spacer"></div>
+          <button class="btn" id="adRefresh">Refresh</button>
+        </div>
+
+        <div class="statgrid">
+          <div class="st"><div class="k">Assigned users</div><div class="v" id="adTotal">&mdash;</div></div>
+          <div class="st"><div class="k">Active learners</div><div class="v" id="adActive">&mdash;</div></div>
+          <div class="st"><div class="k">Completed course</div><div class="v" id="adDone">&mdash;</div></div>
+          <div class="st"><div class="k">Average progress</div><div class="v" id="adAvg">&mdash;<small>%</small></div></div>
+        </div>
+
+        <div class="userhead">
+          <span>Name</span><span>Course progress</span>
+          <span>Current topic</span><span>Last active</span><span>Status</span>
+        </div>
+        <div class="topiclist" id="adUsers"></div>
+      </div>
+
+      <!-- one engineer -->
+      <div id="adDetail" hidden>
+        <a class="backlink" href="#" id="adBack">&#8592; All engineers</a>
+        <div class="dash-head">
+          <div>
+            <p class="who" id="adDetailMeta">&mdash;</p>
+            <h1 id="adDetailName">&mdash;</h1>
+          </div>
+          <div class="spacer"></div>
+          <div style="min-width:240px">
+            <p class="eyebrow" style="margin-bottom:11px">Awaken Audio</p>
+            <div class="pbar lg"><i id="adDetailBar" style="width:0%"></i></div>
+            <div style="margin-top:9px;font-family:var(--mono);font-size:11px;color:var(--dim)"
+                 id="adDetailPct">0% complete</div>
+          </div>
+        </div>
+
+        <p class="eyebrow" style="margin-top:34px">Progress by topic</p>
+        <div class="colhead">
+          <span>Topic</span><span>Learn &#183; Listen &#183; Practice &#183; Apply &#183; Reflect</span>
+          <span>Best score</span><span class="r">Status</span>
+        </div>
+        <div class="topiclist" id="adDetailTopics"></div>
+
+        <p class="eyebrow" style="margin-top:40px">Reflections</p>
+        <div class="topiclist" id="adDetailRefl"></div>
+
+        <p class="eyebrow" style="margin-top:40px">Recent arcade runs</p>
+        <div class="topiclist" id="adDetailRuns"></div>
+      </div>
+    </div>
+  </section>
+</div>

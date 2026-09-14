@@ -1,0 +1,175 @@
+<!-- ================= IEM MIX ROOM ================= -->
+<div class="page" id="p-iem" hidden>
+<h1 class="sr-only">IEM Mix Room &mdash; in-ear mix simulator</h1>
+<div id="app">
+  <div class="topbar">
+    <div class="brand"><b>IEM MIX ROOM</b><span>Awaken Audio</span></div>
+
+    <div class="viewsw" id="viewsw">
+      <button data-v="ch" class="on"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="2" height="14"/><rect x="5" y="1" width="2" height="14"/><rect x="9" y="1" width="2" height="14"/><rect x="13" y="1" width="2" height="14"/></svg>Channels</button>
+      <button data-v="gr"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Groups View</button>
+    </div>
+
+    <div class="transport">
+      <button class="tbtn play" id="btnPlay" title="Play / Pause (Space)"><svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z"/></svg></button>
+      <button class="tbtn" id="btnStop" title="Back to start"><svg viewBox="0 0 16 16"><path d="M3 3h10v10H3z"/></svg></button>
+      <button class="tbtn loop on" id="btnLoop" title="Loop"><svg viewBox="0 0 16 16"><path d="M4 3h8v2.2L15 3.6 12 1.2v2H2v4.3h2zM12 13H4v-2.2L1 12.4 4 14.8v-2h10V8.5h-2z"/></svg></button>
+    </div>
+    <div class="clock" id="clock"><b>0:00</b> / 0:00</div>
+    <div class="scrub"><input type="range" class="bar" id="scrub" min="0" max="1000" value="0"></div>
+
+    <div class="topright">
+      <button class="ghost big" id="btnAssign">⊞ Assign Groups</button>
+      <button class="ghost more" id="btnMore" aria-label="More controls">•••</button>
+      <div class="tools" id="tools">
+        <button class="ghost" id="btnMixes">Mixes</button>
+        <button class="ghost" id="btnStems">Load Stems</button>
+        <button class="ghost" id="btnAdv">Advanced</button>
+        <button class="ghost" id="btnClearSolo" hidden>Clear Solo</button>
+        <button class="ghost" id="btnReset">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="wallwrap" id="wallwrap">
+      <div class="rotate-hint" id="rotHint">↻ Turn your phone sideways for the full board</div>
+      <div class="wall" id="wall"></div>
+    </div>
+
+    <div class="gview" id="gview" hidden>
+      <div class="gv-head">
+        <h1>Your four groups</h1>
+        <p>One wheel each. Turn it up to hear more of that part of the stage, down to get it out of your way. Nothing else to think about.</p>
+        <div class="scenarios" id="scenarios"></div>
+        <div class="scn-note" id="scnNote" hidden></div>
+      </div>
+      <div class="gv-grid" id="gvGrid"></div>
+      <div class="gv-foot">
+        <button class="ghost" id="btnAssign2">⊞ Change what's in each group</button>
+        <button class="ghost" id="btnAllUnity">Set all groups to 0 dB</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="masterbar">
+    <span class="lbl">Master Volume</span>
+    <div class="mmeter"><i id="mL"></i><i id="mR"></i></div>
+    <span class="mdb" id="masterDb">0.0</span>
+  </div>
+</div>
+
+<!-- assign overlay -->
+<div class="ovl" id="ovl" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-label="Assign channels to groups">
+    <header>
+      <h2>Assign Groups</h2>
+      <p>Pick a group, then tap the channels that belong in it. Rename any group by typing over it.</p>
+      <button class="ghost" id="btnPreset">Use standard preset</button>
+    </header>
+    <div class="gtabs" id="gtabs"></div>
+    <div class="picker" id="picker2"></div>
+    <footer>
+      <button class="ghost" id="btnClearGrp">Clear this group</button>
+      <button class="ghost" id="btnClearAll">Unassign everything</button>
+      <span class="sp"></span>
+      <button class="solid" id="btnDone">Done</button>
+    </footer>
+  </div>
+</div>
+
+<!-- mixes overlay -->
+<div class="ovl" id="ovl5" hidden>
+  <div class="panel narrow" role="dialog" aria-modal="true" aria-label="Saved mixes">
+    <header><h2>Mixes</h2><p>Saved on this device. Use a code to send a mix to someone else.</p></header>
+    <div class="body">
+      <div class="mixsec">
+        <h3>Save this mix</h3>
+        <div class="mixrow">
+          <input class="mixin" id="mixName" placeholder="e.g. Marcus — drummer, week 1" maxlength="48">
+          <button class="solid" id="mixSave">Save</button>
+        </div>
+      </div>
+      <div class="mixsec">
+        <h3>Your saved mixes</h3>
+        <div class="mixlist" id="mixList"></div>
+      </div>
+      <div class="mixsec">
+        <h3>Send this mix to someone</h3>
+        <textarea class="mixin" id="mixOut" readonly></textarea>
+        <div class="mixrow" style="margin-top:8px">
+          <button class="ghost" id="mixCopy">Copy code</button>
+          <span class="mixempty" id="mixCopied"></span>
+        </div>
+      </div>
+      <div class="mixsec">
+        <h3>Load a mix from a code</h3>
+        <textarea class="mixin" id="mixIn" placeholder="Paste a code starting with AWK1-"></textarea>
+        <div class="mixrow" style="margin-top:8px">
+          <button class="ghost" id="mixLoad">Load code</button>
+        </div>
+      </div>
+    </div>
+    <footer><span class="sp"></span><button class="solid" id="mixDone">Done</button></footer>
+  </div>
+</div>
+
+<!-- stems overlay -->
+<div class="ovl" id="ovl2" hidden>
+  <div class="panel narrow" role="dialog" aria-modal="true" aria-label="Load stems">
+    <header><h2>Load Stems</h2></header>
+    <div class="body">
+      <div class="drop" id="drop">
+        <b>Load a different set</b>
+        The stems for this song are already built in. Drop your own audio files here
+        to override them for this session — matched to channels by filename.
+      </div>
+      <input type="file" id="picker" accept="audio/*" multiple hidden>
+      <div class="loadlist" id="loadlist"></div>
+    </div>
+    <footer><span class="sp"></span><button class="solid" id="btnDone2">Done</button></footer>
+  </div>
+</div>
+
+<div class="ovl" id="ovl3">
+  <div class="guide" role="dialog" aria-modal="true" aria-label="Getting started">
+    <div class="step" id="gStep">Step 1 of 5</div>
+    <h2 id="gTitle"></h2>
+    <p id="gBody"></p>
+    <div class="dots" id="gDots"></div>
+    <div class="acts">
+      <button class="ghost" id="gSkip">Skip</button>
+      <span class="sp"></span>
+      <button class="ghost" id="gBack" hidden>Back</button>
+      <button class="solid" id="gNext">Next</button>
+    </div>
+  </div>
+</div>
+
+<div class="ovl" id="ovl4" hidden>
+  <div class="chsheet" role="dialog" aria-modal="true" aria-label="Channel controls">
+    <div class="cshead">
+      <div class="csplate" id="csPlate"><div class="n"></div><div class="t"></div></div>
+      <button class="ghost" id="csClose">Done</button>
+    </div>
+    <div class="csknobs">
+      <div class="pot" id="csPan"></div>
+      <div class="pot" id="csBass"></div>
+      <div class="pot" id="csTreb"></div>
+    </div>
+    <div class="csrow">
+      <button class="ghost" id="csMute">Mute</button>
+      <button class="ghost" id="csCentre">Pan Centre</button>
+      <button class="ghost" id="csFlat">EQ Flat</button>
+      <button class="ghost" id="csUnity">Set to 0 dB</button>
+    </div>
+  </div>
+</div>
+
+<div class="loadbar" id="loadbar" hidden>
+  <span id="lbText">Loading stems…</span>
+  <span class="lbtrack"><span class="lbfill" id="lbFill"></span></span>
+</div>
+
+<div class="toast" id="toast"></div>
+</div>
