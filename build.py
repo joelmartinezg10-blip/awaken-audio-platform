@@ -1,3 +1,20 @@
+# ============================================================================
+# STOP - READ BEFORE RUNNING
+#
+# This build script and the src/ tree it reads are STALE as of 2026-09-14.
+# They are dated 3 Sep 2026. The live site is newer: the 7 Sep work
+# (dual-codec audio, awaken-manage.js, awaken-profile.js, the Low-Pass
+# module, index.html slimmed from 6.1 MB to 0.91 MB) was deployed without
+# ever being saved back into src/.
+#
+# Running this script writes into app/public and would OVERWRITE the good
+# deployed site with the 3 Sep build - re-breaking iPhone audio and
+# removing two JS files that exist nowhere else.
+#
+# Reconcile src/ with app/public FIRST. Until then, treat app/public as
+# the source of truth and this script as reference only.
+# ============================================================================
+
 #!/usr/bin/env python3
 """
 Assemble the deployable Awaken Audio site.
