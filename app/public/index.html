@@ -81,8 +81,20 @@ p strong{color:var(--white);font-weight:600}
 
 /* ---------- nav ---------- */
 header.nav{
-  position:sticky;top:0;z-index:50;background:rgba(9,9,11,.86);
-  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);
+  /* Day 1 fix, 14 Sep 2026: Safari (and every iPhone) needs the -webkit-
+     prefix. Without it the blur never applied and the near-opaque value
+     below was the only thing standing between the sticky header and the
+     content scrolling under it - which read as a broken layout. The
+     translucent value is now only used where the blur actually works. */
+  position:sticky;top:0;z-index:50;background:rgba(9,9,11,.97);
+  border-bottom:1px solid var(--line);
+}
+@supports ((-webkit-backdrop-filter:blur(14px)) or (backdrop-filter:blur(14px))){
+  header.nav{
+    background:rgba(9,9,11,.86);
+    -webkit-backdrop-filter:blur(14px);
+    backdrop-filter:blur(14px);
+  }
 }
 .nav-in{max-width:var(--maxw);margin:0 auto;padding:0 28px;display:flex;align-items:center;gap:26px;height:62px}
 .brand{display:flex;align-items:baseline;gap:9px;text-decoration:none;flex:none}
@@ -6723,6 +6735,11 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 
 
 /* ===== channel picker ===== */
+/* Day 1 fix, 14 Sep 2026: a plain .stemgrid in an overlay (e.g. #kStems in
+   KNEE DEEP) inherited only the base minmax(150px,1fr) and could compute
+   wider than its parent, clipping 2 of 6 sources out of reach on a phone.
+   The .chpick variant already had width:100%; the plain one did not. */
+#p-arcade .overlay .stemgrid{width:100%;max-width:100%}
 #p-arcade .overlay .stemgrid.chpick{max-width:860px;width:100%;max-height:250px;overflow:auto;
   grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
 #p-arcade .overlay .stemgrid.chpick .stembtn{padding:9px 10px}
@@ -6797,6 +6814,15 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 /* channel pickers get narrower cards before they start scrolling */
 @media(max-width:640px){
   #p-arcade .overlay .stemgrid{grid-template-columns:repeat(auto-fit,minmax(118px,1fr))}
+}
+
+/* Day 1 fix, 14 Sep 2026: defence in depth against the next unhandled flex
+   row escaping to <body>. Deliberately overflow-x:CLIP, not hidden - hidden
+   makes the element a scroll container and breaks position:sticky on
+   header.nav. clip does not, and is guarded so browsers without it are
+   simply left as they are. */
+@supports (overflow-x:clip){
+  html,body{overflow-x:clip}
 }
 
 

@@ -1,0 +1,51 @@
+name: CI
+
+# Four checks stand between this repo and the 7 Sep outage repeating.
+# Silent failures need machines watching, not people.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  assets:
+    name: Asset checks (codecs, sizes)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every .ogg/.webm has a sibling .m4a, index.html under 1.5 MB
+        run: python3 app/tests_assets.py
+
+  mobile:
+    name: Mobile overflow sweep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install playwright
+      - run: python -m playwright install --with-deps chromium
+      - name: Serve app/public
+        run: |
+          python3 -m http.server 8931 --directory app/public &
+          for i in $(seq 1 20); do
+            curl -sf -o /dev/null http://localhost:8931/ && break
+            sleep 1
+          done
+      - name: Sweep every route and tab at 393, 360 and 320px
+        run: python3 app/tests_mobile_sweep.py http://localhost:8931
+
+  live:
+    name: Ten-URL check on production
+    runs-on: ubuntu-latest
+    # Only after a push to main has had a chance to deploy.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [assets, mobile]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for the Vercel deploy to go live
+        run: sleep 90
+      - run: python3 app/tests_live_urls.py https://www.awakenaudio.app
