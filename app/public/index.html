@@ -4747,7 +4747,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
           <button class="btn" id="frenzyHint" disabled>ELIMINATE <b class="num" id="fzHintLeft">3</b></button>
         </div>
         <div class="fwrap">
-          <div class="fstrip" id="sprintSpec"></div>
+          <div class="fstrip" id="sprintSpec" data-bells="heat"></div>
           <div class="freadout" id="freadout"><span class="hz"></span><span class="nm"></span></div>
           <div class="ticks" id="sprintTicks"></div>
         </div>
@@ -6066,7 +6066,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 @media(prefers-reduced-motion:reduce){#p-arcade .spark{display:none}}
 #p-arcade .fwrap{position:relative;margin:14px 0 0}
 #p-arcade .fstrip{display:flex;height:210px;background:#0F0F13;border:1px solid #26262C;border-radius:3px;overflow:hidden}
-#p-arcade .fzone{position:relative;flex:0 0 auto;background:#1A1A20;border-right:1px solid #26262C;
+#p-arcade .fzone{position:relative;flex:0 0 auto;background:transparent;border-right:1px solid #26262C;
   transition:background .1s;display:flex;align-items:center;justify-content:center;padding:0}
 #p-arcade .fzone:last-child{border-right:none}
 #p-arcade .fzone:hover:not(:disabled),#p-arcade .fzone:focus-visible:not(:disabled){
@@ -6094,6 +6094,31 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-arcade .fzone.off{background:#0D0D11;opacity:.4}
 #p-arcade .fzone:disabled{cursor:default}
 #p-arcade .fzone.armed:not(:disabled){cursor:pointer}
+/* ---------- EQ bells under the Frenzy board ---------- */
+/* Decoration and affordance only. These never show the live EQ - drawing
+   the real boost would hand over the answer. */
+#p-arcade .fstrip{position:relative}
+#p-arcade .fbells{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+#p-arcade .fzone{z-index:1}
+#p-arcade .bell{opacity:.52;transition:opacity .16s}
+#p-arcade .bell .bline{stroke-width:1.6}
+#p-arcade .bell .bnode{opacity:0;transition:opacity .16s}
+#p-arcade .bell.hot{opacity:1}
+#p-arcade .bell.hot .bline{stroke-width:2}
+#p-arcade .bell.hot .bnode{opacity:1}
+#p-arcade .bell.off,#p-arcade .bell.elim{opacity:.07}
+#p-arcade .bell.correct{opacity:1}
+#p-arcade .bell.correct .bline{stroke:#3ECF8E;stroke-width:2.4}
+#p-arcade .bell.correct .bfill{fill:rgba(62,207,142,.22)}
+#p-arcade .bell.correct .bnode{opacity:1;fill:#3ECF8E}
+#p-arcade .bell.wrong{opacity:1}
+#p-arcade .bell.wrong .bline{stroke:#E5484D;stroke-width:2}
+#p-arcade .bell.wrong .bfill{fill:rgba(229,72,77,.18)}
+/* on a phone nine filled bells is mush - keep the line, drop the wash */
+@media(max-width:640px){
+  #p-arcade .bell .bfill{opacity:.35}
+  #p-arcade .bell{opacity:.5}
+}
 #p-arcade .ticks{position:relative;height:38px;margin-top:2px}
 #p-arcade .ticks span{position:absolute;transform:translateX(-50%);font-family:var(--mono);font-size:10px;
   color:var(--dim);white-space:nowrap}
@@ -14851,6 +14876,7 @@ showView=function(v){
 <script src="/js/awaken-progress.js"></script>
 <script src="/js/awaken-app.js"></script>
 <script src="/js/awaken-levels.js"></script>
+<script src="/js/awaken-bells.js"></script>
 <script src="/js/awaken-manage.js"></script>
 <script src="/js/awaken-profile.js"></script>
 <script src="/js/iem.js"></script>
