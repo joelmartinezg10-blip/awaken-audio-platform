@@ -218,8 +218,15 @@
       });
     });
 
-    var so = $("#signOutBtn");
-    if (so) so.onclick = function () { D.signOut().then(function () { location.hash = "#/"; }); };
+    /* Every sign-out control, not just the one in the account menu. The
+       header link carries .signout so a control added anywhere is wired
+       by the same selector rather than needing a new id here. */
+    $$("#signOutBtn, .signout").forEach(function (el) {
+      el.onclick = function (e) {
+        if (e) e.preventDefault();
+        D.signOut().then(function () { location.hash = "#/"; });
+      };
+    });
   }
 
   /* ============================================================
