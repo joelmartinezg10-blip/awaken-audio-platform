@@ -105,10 +105,17 @@
   function resetPassword(email) {
     if (!configured) return Promise.reject(new Error("not configured"));
     return sb.auth.resetPasswordForEmail(email, {
-      /* #/reset was never a route, so the reset link landed on nothing and
-         the app fell through to the dashboard. Point at the login card,
-         which is where the "set a new password" form lives. */
-      redirectTo: global.location.origin + "/#/login"
+      /* No fragment here, deliberately. Supabase appends its own
+         "#access_token=...&type=recovery" to whatever this is, so a
+         redirectTo that already ends in "#/login" produces
+         "...#/login#access_token=..." - two fragments. The client cannot
+         parse that, so no session is created, PASSWORD_RECOVERY never
+         fires, and the router does not recognise "/login#access_token..."
+         as a route either. The link simply landed on the home page.
+         Send them to the bare origin and let the client have the
+         fragment to itself; the PASSWORD_RECOVERY handler in
+         awaken-app.js takes it from there. */
+      redirectTo: global.location.origin + "/"
     });
   }
 

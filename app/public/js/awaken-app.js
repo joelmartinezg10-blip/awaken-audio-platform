@@ -109,6 +109,13 @@
      with nothing attached - and offering "Set new password" to somebody the
      server will refuse is the worst of both: they type a password, get
      "Auth session missing!", and have no idea they need a fresh link. */
+  /* A route never contains "#", "?" or "&". Anything after one is a
+     provider's leftovers, and treating the whole string as the route is
+     how a reset link ends up rendering the home page instead. */
+  function routeOf() {
+    return (location.hash.replace(/^#/, "").split(/[#?&]/)[0]) || "/";
+  }
+
   function recoveryUsable() {
     return isRecovering() && D.isSignedIn();
   }
@@ -751,7 +758,7 @@
    * a blank screen.
    * ============================================================ */
   function guard() {
-    var h = location.hash.replace(/^#/, "") || "/";
+    var h = routeOf();
     if (PROTECTED[h] && !D.isSignedIn()) { location.replace("#/login"); return false; }
     if (ADMIN_ONLY[h] && !D.isAdmin())   { location.replace("#/dashboard"); return false; }
     return true;
@@ -782,9 +789,9 @@
       location.replace("#/login");
       return;
     }
-    silenceLeftBehind(location.hash.replace(/^#/, "") || "/");
+    silenceLeftBehind(routeOf());
     if (!guard()) return;
-    var h = location.hash.replace(/^#/, "") || "/";
+    var h = routeOf();
     if (h === "/dashboard") renderDashboard();
     else if (h === "/reflections") { wireReflect(); renderReflections(); }
     else if (h === "/admin") renderAdmin();
