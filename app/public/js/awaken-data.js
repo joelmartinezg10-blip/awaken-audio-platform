@@ -43,11 +43,21 @@
     loadedAt: 0
   };
   var listeners = [];
+  var recovering = false;
   function emit() { listeners.slice().forEach(function (f) { try { f(state); } catch (e) {} }); }
 
   /* Any change to the session repaints everything that depends on it. */
   if (configured) {
     authWatch = sb.auth.onAuthStateChange(function (event, session) {
+      /* A recovery link SIGNS YOU IN. That is how Supabase works and it
+         cannot be turned off - the link's whole job is to get you into
+         the account you are locked out of. What must follow is an
+         immediate demand for a new password, and the only reliable
+         signal that this session came from a reset link is this event.
+         The URL cannot be used: creating the client above already
+         consumed and cleaned the fragment that carried type=recovery,
+         before any other file gets to look at it. */
+      if (event === "PASSWORD_RECOVERY") recovering = true;
       var had = !!state.user;
       state.user = session ? session.user : null;
       if (!state.user) { state.profile = null; emit(); return; }
@@ -95,7 +105,10 @@
   function resetPassword(email) {
     if (!configured) return Promise.reject(new Error("not configured"));
     return sb.auth.resetPasswordForEmail(email, {
-      redirectTo: global.location.origin + "/#/reset"
+      /* #/reset was never a route, so the reset link landed on nothing and
+         the app fell through to the dashboard. Point at the login card,
+         which is where the "set a new password" form lives. */
+      redirectTo: global.location.origin + "/#/login"
     });
   }
 
@@ -607,6 +620,8 @@
 
     signUp: signUp, signIn: signIn, signOut: signOut,
     resetPassword: resetPassword, updatePassword: updatePassword,
+    isRecovering: function () { return recovering; },
+    clearRecovery: function () { recovering = false; },
     loadSession: loadSession,
     getCurrentUser: getCurrentUser, isSignedIn: isSignedIn,
     isAdmin: isAdmin, isSuperAdmin: isSuperAdmin, isDirector: isDirector,

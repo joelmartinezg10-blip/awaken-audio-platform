@@ -95,7 +95,20 @@
    * AUTH SCREEN
    * ============================================================ */
   var mode = "signin";
-  var recovering = /type=recovery/.test(location.hash) || /type=recovery/.test(location.search);
+  /* Day 3, 15 Sep 2026: this used to be the ONLY recovery check, and it
+     never fired. awaken-data.js loads first and creating the Supabase
+     client consumes the URL fragment carrying type=recovery, so by the
+     time this line ran there was nothing left to match. The reset link
+     therefore signed people straight in and dropped them on the
+     dashboard with their OLD password still valid - the one they could
+     not remember. The authoritative signal is the PASSWORD_RECOVERY
+     event, which awaken-data.js now records; the URL test stays as a
+     belt-and-braces check for the older link format. */
+  function isRecovering() {
+    return /type=recovery/.test(location.hash) ||
+           /type=recovery/.test(location.search) ||
+           (D && D.isRecovering && D.isRecovering());
+  }
   function setMsg(kind, text) {
     var m = $("#authMsg"); if (!m) return;
     if (!text) { m.hidden = true; return; }
@@ -184,6 +197,7 @@
         return D.updatePassword($("#lg-pass").value).then(function (r) {
           busy(false);
           if (r && r.error) return setMsg("error", esc(r.error.message));
+          if (D.clearRecovery) D.clearRecovery();
           setMsg("ok", "Password updated.");
           setTimeout(function () { location.hash = "#/dashboard"; }, 900);
         });
@@ -687,6 +701,14 @@
 
   function onRoute() {
     paintHeader();
+    /* Mid-recovery there is exactly one thing to do. The session is real,
+       so every other page would happily render - and the account would be
+       left on the password its owner came here to change. */
+    if (isRecovering() && location.hash !== "#/login") {
+      setMode("recover");
+      location.replace("#/login");
+      return;
+    }
     silenceLeftBehind(location.hash.replace(/^#/, "") || "/");
     if (!guard()) return;
     var h = location.hash.replace(/^#/, "") || "/";
@@ -694,6 +716,7 @@
     else if (h === "/reflections") { wireReflect(); renderReflections(); }
     else if (h === "/admin") renderAdmin();
     else if (h === "/courses") renderCourses();
+    else if (h === "/reset") { setMode("recover"); location.replace("#/login"); }
     else if (h === "/login" && D.isSignedIn() && mode !== "recover")
       location.replace(D.isAdmin() ? "#/admin" : "#/dashboard");
   }
@@ -712,7 +735,16 @@
       return;
     }
     wireAuth();
-    setMode(recovering ? "recover" : "signin");
+    setMode(isRecovering() ? "recover" : "signin");
+    /* The event can arrive after boot, because the client resolves the
+       link asynchronously. Whenever it does, take over: send them to the
+       login card and refuse to show anything else until a new password
+       is set. */
+    D.onChange(function () {
+      if (!isRecovering() || mode === "recover") return;
+      setMode("recover");
+      if (location.hash !== "#/login") location.replace("#/login");
+    });
 
     /* A scrolling tab row is useless if the tab you just picked is off
        screen. Keep the selected one in view without moving the page. */
