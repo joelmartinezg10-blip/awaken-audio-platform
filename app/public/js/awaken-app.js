@@ -124,9 +124,17 @@
    * device so nobody is asked twice - and it costs them nothing, because
    * the answer only chooses a starting point. Nothing is ever locked.
    * ============================================================ */
+  /* One mark for "this person has dealt with the welcome screen", set by
+     answering OR skipping. Answering also writes the experience to the
+     profile, which is what the guided path reads - but a failed write must
+     not bounce somebody back here forever, so the local mark is what stops
+     the loop. */
   var WELCOME_SKIPPED = "awaken.welcome.skipped";
   function skippedWelcome() {
     try { return localStorage.getItem(WELCOME_SKIPPED) === "1"; } catch (e) { return false; }
+  }
+  function markWelcomeDone() {
+    try { localStorage.setItem(WELCOME_SKIPPED, "1"); } catch (e) {}
   }
   function needsWelcome() {
     var p = D.getCurrentUser();
@@ -174,6 +182,7 @@
           o.setAttribute("aria-pressed", String(o === b));
         });
         $("#wcMsg").textContent = "Saving\u2026";
+        markWelcomeDone();
         /* the answer is a preference, not a gate - a failed write must not
            strand somebody on this screen */
         D.updateProfile({ experience: exp })
@@ -184,7 +193,7 @@
 
     var skip = $("#wcSkip");
     if (skip) skip.onclick = function () {
-      try { localStorage.setItem(WELCOME_SKIPPED, "1"); } catch (e) {}
+      markWelcomeDone();
       location.hash = "#/dashboard";
     };
   }
@@ -453,8 +462,19 @@
       if (!next) for (var j = 0; j < topics.length; j++) {
         if (topics[j].status === "not_started") { next = topics[j]; break; }
       }
+      /* START HERE used to appear three times on a new account: this card,
+         the dedicated one below it, and its own row in the topic list - two
+         big cards, same words, same destination, stacked. The dedicated card
+         wins, because it says WHY to open it. This one steps aside. */
+      var startTopic = null;
+      for (var k = 0; k < topics.length; k++)
+        if (topics[k].topic_slug === "start-here") startTopic = topics[k];
+      var startCardShowing = !!startTopic && startTopic.status !== "complete";
+
       var cont = $("#dbContinue");
-      if (next) {
+      if (next && startCardShowing && next.topic_slug === "start-here") {
+        cont.hidden = true;
+      } else if (next) {
         cont.hidden = false;
         $("#dbContLab").textContent = next.status === "in_progress" ? "Continue training" : "Start here";
         $("#dbContTitle").textContent = next.topic_title;
@@ -879,7 +899,14 @@
     silenceLeftBehind(routeOf());
     if (!guard()) return;
     var h = routeOf();
-    if (h === "/dashboard") renderDashboard();
+    if (h === "/dashboard") {
+      /* Signing in happens long after boot: the auth form sends people
+         straight here, so a check that only ran at page load never fired
+         for the one person it exists for - somebody who just made an
+         account. The dashboard is the door everybody comes through. */
+      if (needsWelcome()) { location.replace("#/welcome"); return; }
+      renderDashboard();
+    }
     else if (h === "/reflections") { wireReflect(); renderReflections(); }
     else if (h === "/admin") renderAdmin();
     else if (h === "/courses") renderCourses();
