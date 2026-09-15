@@ -1,0 +1,21 @@
+-- Recovered live schema: row-level security status, public schema
+-- Exported from the Awaken Audio production database, 14 Sep 2026.
+-- Recovery artifact, not a migration. See RECOVER_LIVE_SCHEMA.md.
+--
+-- All 13 tables have RLS ENABLED. Every policy in policies_2026-09-14.sql is
+-- therefore live, and no table is readable around them.
+--
+--   admin_user_assignments   arcade_attempts   campus_directors   campuses
+--   courses                  enrollments       group_members      groups
+--   module_progress          modules           profiles           reflections
+--   topics
+--
+-- relforcerowsecurity is false everywhere, which is normal: it only affects
+-- the table owner, and the application never connects as the owner.
+--
+-- Re-check with:
+--   select relname, relrowsecurity from pg_class
+--    where relnamespace = 'public'::regnamespace and relkind = 'r'
+--    order by relname;
+-- A new table added later starts with RLS OFF. That is the failure mode to
+-- watch for: policies written, RLS never switched on, everything readable.
