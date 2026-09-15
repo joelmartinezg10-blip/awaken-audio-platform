@@ -1054,6 +1054,14 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 .starthere .spacer{flex:1;min-width:16px}
 /* everything else reads as secondary until this is done */
 .topiclist.gated .topicrow:not(.is-start){opacity:.55}
+/* waiting-for-a-trainer notice on the dashboard */
+.waiting{display:flex;gap:18px;align-items:flex-start;margin-top:26px;padding:18px 20px;
+  border:1px solid var(--line);border-left:2px solid var(--violet);background:var(--rack)}
+.waiting[hidden]{display:none}
+.waiting .lab{font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--violet)}
+.waiting h3{margin:7px 0 6px;font-size:15px;color:var(--white)}
+.waiting p{margin:0;font-size:13.5px;color:var(--dim);max-width:70ch;line-height:1.55}
 
 /* the topic row is now: name | framework strip | progress | status */
 .topicrow,.colhead{grid-template-columns:minmax(150px,1.25fr) minmax(300px,1.5fr) 118px 92px !important}
@@ -2755,6 +2763,22 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
             <span id="dbPctText">0% complete</span>
             <span id="dbTopicCount">&mdash;</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Day 3, 15 Sep 2026: an engineer with no trainer used to be told
+           nothing at all here - the only mention lived on the profile page as
+           "Not assigned yet". Silence reads as "this thing is broken" or "I did
+           something wrong". It says what is happening, who is dealing with it,
+           and that nothing is stopping them starting. -->
+      <div class="waiting" id="dbWaiting" hidden>
+        <div>
+          <div class="lab">Waiting to be connected</div>
+          <h3>Your trainer is being assigned</h3>
+          <p>Your campus director connects every engineer to a trainer by hand, so
+             it can take a few days. Nothing is stopping you in the meantime &mdash;
+             start anywhere below and your progress is saved to your account. Your
+             trainer will see all of it when they are connected.</p>
         </div>
       </div>
 

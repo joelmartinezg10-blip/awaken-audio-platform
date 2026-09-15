@@ -350,6 +350,20 @@
     $("#dbName").textContent = (p.full_name || "Engineer").split(" ")[0] || "Engineer";
     $("#dbWho").textContent = "Welcome back";
 
+    /* An engineer with no trainer is the one person on this page who needs
+       telling something, and was the one person told nothing. Trainers and
+       directors are not waiting on anybody, so they never see this. */
+    var wait = $("#dbWaiting");
+    if (wait) {
+      wait.hidden = true;
+      if (p.role === "user") {
+        D.getRoster(p.campus || null).then(function (rows) {
+          var me = rows.filter(function (r) { return r.profile_id === p.id; })[0];
+          wait.hidden = !!(me && me.trainer_name);
+        }).catch(function () { /* leave it hidden rather than guess */ });
+      }
+    }
+
     D.getUserProgress(true).then(function (res) {
       var topics = res.topics || [], c = res.course;
       var pct = c ? c.percent : 0;
