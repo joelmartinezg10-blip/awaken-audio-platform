@@ -13,7 +13,7 @@
     });
   };
 
-  var PROTECTED = { "/dashboard": 1, "/admin": 1, "/profile": 1, "/reflections": 1 };
+  var PROTECTED = { "/dashboard": 1, "/admin": 1, "/profile": 1, "/reflections": 1, "/welcome": 1 };
   var ADMIN_ONLY = { "/admin": 1 };
 
   /* ---------- small formatters ---------- */
@@ -114,6 +114,79 @@
      how a reset link ends up rendering the home page instead. */
   function routeOf() {
     return (location.hash.replace(/^#/, "").split(/[#?&]/)[0]) || "/";
+  }
+
+  /* ============================================================
+   * FIRST RUN
+   *
+   * Asked once, answered in one tap, and only of an engineer who has
+   * never answered it. Skipping is a real answer - it is remembered per
+   * device so nobody is asked twice - and it costs them nothing, because
+   * the answer only chooses a starting point. Nothing is ever locked.
+   * ============================================================ */
+  var WELCOME_SKIPPED = "awaken.welcome.skipped";
+  function skippedWelcome() {
+    try { return localStorage.getItem(WELCOME_SKIPPED) === "1"; } catch (e) { return false; }
+  }
+  function needsWelcome() {
+    var p = D.getCurrentUser();
+    return !!(p && p.role === "user" && !p.experience && !skippedWelcome());
+  }
+
+  /* The point of the whole screen: the next thing that happens is a SOUND.
+     Beginners get the EQ A/B lab, where a boost appears and disappears on a
+     stem from their own stage. Everyone else gets Frequency Frenzy - the
+     same question asked as a challenge rather than a demonstration. It is
+     scored and objective: you either heard 250 Hz or you did not, which is
+     the one kind of first impression an experienced engineer cannot argue
+     with. Each hands off to a control the visitor taps themselves, which is
+     also what lets the browser start audio. */
+  function firstWin(exp) {
+    var beginner = (exp === "new" || exp === "some");
+    location.hash = "#/arcade";
+    setTimeout(function () {
+      try {
+        if (beginner) {
+          var tab = $$("[data-sub]").filter(function (b) {
+            return b.dataset.sub === "listen-eq";
+          })[0];
+          if (tab) { tab.click(); tab.scrollIntoView({ block: "center" }); return; }
+        }
+        var cab = $$(".cabcard.playable").filter(function (c) {
+          return /FREQUENCY/i.test(c.textContent || "");
+        })[0];
+        if (cab) { cab.scrollIntoView({ block: "center" }); cab.click(); }
+      } catch (e) {
+        /* the arcade page is a perfectly good place to be left */
+      }
+    }, 260);
+  }
+
+  function wireWelcome() {
+    var opts = $("#wcOpts");
+    if (!opts || opts.__wired) return;
+    opts.__wired = true;
+
+    $$("#wcOpts button").forEach(function (b) {
+      b.onclick = function () {
+        var exp = b.dataset.exp;
+        $$("#wcOpts button").forEach(function (o) {
+          o.setAttribute("aria-pressed", String(o === b));
+        });
+        $("#wcMsg").textContent = "Saving\u2026";
+        /* the answer is a preference, not a gate - a failed write must not
+           strand somebody on this screen */
+        D.updateProfile({ experience: exp })
+         .catch(function () {})
+         .then(function () { firstWin(exp); });
+      };
+    });
+
+    var skip = $("#wcSkip");
+    if (skip) skip.onclick = function () {
+      try { localStorage.setItem(WELCOME_SKIPPED, "1"); } catch (e) {}
+      location.hash = "#/dashboard";
+    };
   }
 
   function recoveryUsable() {
@@ -810,6 +883,7 @@
     else if (h === "/reflections") { wireReflect(); renderReflections(); }
     else if (h === "/admin") renderAdmin();
     else if (h === "/courses") renderCourses();
+    else if (h === "/welcome") wireWelcome();
     else if (h === "/reset") {
       /* Old reset emails point here. Honour them only if the link worked. */
       if (recoveryUsable()) setMode("recover"); else deadLink();
@@ -865,6 +939,13 @@
 
     D.loadSession().then(function () {
       paintHeader();
+      /* Only from the places a first sign-in actually lands. Somebody who
+         deep-linked to a lesson is mid-thought; interrupting them with a
+         questionnaire is worse than not knowing their experience. */
+      var h = routeOf();
+      if (needsWelcome() && (h === "/" || h === "/dashboard" || h === "/login")) {
+        location.replace("#/welcome");
+      }
       onRoute();
     });
   }
