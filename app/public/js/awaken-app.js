@@ -81,7 +81,9 @@
     var rc = $("#acctRole");
     if (rc) {
       rc.hidden = !D.isAdmin();
-      rc.textContent = D.isSuperAdmin() ? "Master Admin" : "Trainer";
+      rc.textContent = D.isSuperAdmin() ? "Master Admin"
+                     : (D.isDirector && D.isDirector()) ? "Campus Director"
+                     : "Trainer";
     }
     /* the avatar and the menu are painted by awaken-profile.js, which
        owns everything that depends on the profile row rather than the

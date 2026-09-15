@@ -273,7 +273,11 @@
   function renderDirectors() {
     Promise.all([D.getCampusDirectors(), D.getRoster(null)]).then(function (res) {
       var dirs = res[0], all = res[1];
-      var eligible = all.filter(function (r) { return r.role === "admin"; });
+      /* Anyone at the campus may be seated, not only Trainers. Directorship
+         is a relationship, not a rung on a ladder - requiring a promotion
+         first was this list's invention, never the database's rule.
+         Day 2, 15 Sep 2026. */
+      var eligible = all.slice();
       $("#mgDirectors").innerHTML = state.campuses.map(function (c) {
         var here = dirs.filter(function (d) { return d.campus_slug === c.slug; });
         var cells = [1, 2].map(function (slot) {

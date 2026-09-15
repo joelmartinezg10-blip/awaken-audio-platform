@@ -109,13 +109,22 @@
     flush();
     return sb.auth.signOut().then(function () {
       state.user = null; state.profile = null; state.topics = null; state.course = null;
+      state.directorCampus = null;
       emit();
     });
   }
 
   function getCurrentUser() { return state.profile; }
   function isSignedIn()     { return !!state.user; }
-  function isAdmin()        { return !!state.profile && (state.profile.role === "admin" || state.profile.role === "super_admin"); }
+  /* Directorship is a RELATIONSHIP (a campus_directors row), not a role.
+     The database has always agreed: campus_directors_write checks
+     is_super_admin() and nothing about the target's role, and the
+     director branches of can_view_member/can_read_reflection/can_assign
+     never look at role either. Only this function did - which bounced a
+     director off /admin unless somebody had first made them a Trainer.
+     Day 2, 15 Sep 2026: a seated director is an admin here too. */
+  function isAdmin()        { return isDirector() || (!!state.profile && (state.profile.role === "admin" || state.profile.role === "super_admin")); }
+  function isDirector()     { return !!state.directorCampus; }
   function isSuperAdmin()   { return !!state.profile && state.profile.role === "super_admin"; }
 
   /* Resolve the session and profile. Called on boot and whenever
@@ -141,7 +150,15 @@
               emit();
               return null;
             }
-            state.profile = p.data; emit(); return state.profile;
+            state.profile = p.data;
+            /* Resolve directorship before emitting: isAdmin() depends on it,
+               and a late answer would paint the header without the Admin tab
+               and then flip it in. Its own failure is not fatal. */
+            return sb.from("campus_directors").select("campus_slug")
+              .eq("profile_id", state.user.id).maybeSingle()
+              .then(function (d) { state.directorCampus = d && d.data ? d.data.campus_slug : null; })
+              .catch(function () { state.directorCampus = null; })
+              .then(function () { emit(); return state.profile; });
           });
       }
       return fetchProfile(1);
@@ -535,7 +552,7 @@
     resetPassword: resetPassword, updatePassword: updatePassword,
     loadSession: loadSession,
     getCurrentUser: getCurrentUser, isSignedIn: isSignedIn,
-    isAdmin: isAdmin, isSuperAdmin: isSuperAdmin,
+    isAdmin: isAdmin, isSuperAdmin: isSuperAdmin, isDirector: isDirector,
     updateProfile: updateProfile,
     uploadAvatar: uploadAvatar,
 

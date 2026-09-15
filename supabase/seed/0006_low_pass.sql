@@ -4,7 +4,14 @@
 -- this machine; this was rebuilt from the ui_keys the deployed site reports
 -- progress for (learn-lp, listen-lp) and the shape of 0001_awaken_audio.sql.
 --
--- RUN day2/00_audit.sql FIRST.
+-- VERIFIED 15 Sep 2026: day2/00_audit.sql was run against production. All 15
+-- deployed ui_keys have rows and are active; learn-lp and listen-lp sit under
+-- topic slug 'low-pass', matching this file. The original 0006 DID run before
+-- it was lost. Nothing is broken; this file is the record, not a repair.
+--
+-- Do NOT run it against production - it is already what production has.
+--
+-- RUN day2/00_audit.sql FIRST if this is ever used to rebuild from scratch.
 --   * If learn-lp and listen-lp already have rows, the original ran before it
 --     was lost. Do NOT run this — instead correct the topic slug and title
 --     below to match what the audit reported, and keep the file as the record.

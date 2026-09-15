@@ -1579,7 +1579,12 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
           <a href="#/iem">IEM Mix Room</a>
         </span>
       </span>
-      <a href="#/login" class="nav-login" data-g="login">Log in</a>
+      <!-- Day 2, 15 Sep 2026: this link had no data-auth, so it read "Log in"
+           to signed-in users forever. paintHeader() toggles [data-auth] on
+           every render; the link was simply never enrolled. -->
+      <a href="#/login"   class="nav-login" data-auth="out" data-g="login">Log in</a>
+      <a href="#/admin"   class="nav-login" data-auth="admin" data-g="admin" hidden>Admin</a>
+      <a href="#/profile" class="nav-login" data-auth="in" data-g="account" hidden>My Account</a>
     </nav>
   </div>
   <div class="subnav" id="subnav" hidden><div class="subnav-in"></div></div>
