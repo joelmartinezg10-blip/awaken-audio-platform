@@ -111,9 +111,15 @@
 
   function setMode(m) {
     mode = m;
+    /* "forgot" is a sub-state of signing in, not a third destination, so
+       the Sign in tab stays selected while you are in it. */
+    var tabMode = (m === "forgot") ? "signin" : m;
     $$("#authTabs button").forEach(function (b) {
-      b.setAttribute("aria-selected", String(b.dataset.mode === m));
+      b.setAttribute("aria-selected", String(b.dataset.mode === tabMode));
     });
+    var fl = $("#forgotLink"), bl = $("#backToSignin");
+    if (fl) fl.hidden = (m !== "signin");
+    if (bl) bl.hidden = (m !== "forgot");
     $("#authTabs").hidden      = (m === "recover");
     $("#authNameRow").hidden   = (m !== "signup");
     $("#authCampusRow").hidden = (m !== "signup");
@@ -165,7 +171,7 @@
   function wireAuth() {
     if (!$("#authTabs")) return;
     fillCampusSelect();
-    $$("#authTabs button").forEach(function (b) {
+    $$("#authTabs button, #forgotLink, #backToSignin").forEach(function (b) {
       b.onclick = function () { setMode(b.dataset.mode); };
     });
     $("#authForm").addEventListener("submit", function (e) {
