@@ -134,7 +134,29 @@
     } catch (e) { return wants; }
   }
 
+  /* A plain disclosure, for places that have no numbered sections to build
+     a level select from - an arcade cabinet's pre-game brief, say. Same
+     principle: one primary thing on screen, the depth one tap away, and
+     nothing deleted. */
+  function wireReveals() {
+    Array.prototype.forEach.call(
+      document.querySelectorAll("[data-reveal]"), function (b) {
+        if (b.__wired) return;
+        b.__wired = true;
+        b.onclick = function () {
+          var panel = document.getElementById(b.dataset.reveal);
+          if (!panel) return;
+          var open = panel.hidden;
+          panel.hidden = !open;
+          b.setAttribute("aria-expanded", String(open));
+          b.textContent = open ? (b.dataset.less || "Hide")
+                               : (b.dataset.more || "Read more");
+        };
+      });
+  }
+
   function init() {
+    wireReveals();
     if (disabled()) return;
     Array.prototype.forEach.call(document.querySelectorAll("[data-levels]"), build);
   }

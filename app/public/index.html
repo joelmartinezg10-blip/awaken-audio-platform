@@ -1054,6 +1054,17 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 .starthere .spacer{flex:1;min-width:16px}
 /* everything else reads as secondary until this is done */
 .topiclist.gated .topicrow:not(.is-start){opacity:.55}
+/* ---------- a plain disclosure, for pages with no sections ---------- */
+.ghook{margin:14px 0 0;max-width:62ch;font-size:15px;line-height:1.55;color:var(--muted)}
+.revealer{display:inline-block;margin-top:16px;padding:0;cursor:pointer;
+  background:none;border:0;color:var(--dim);
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  text-decoration:underline;text-underline-offset:4px}
+.revealer:hover{color:var(--white)}
+.revealer:focus-visible{outline:1px solid var(--accent);outline-offset:3px}
+.revealed{margin-top:16px;padding-left:15px;border-left:1px solid var(--line)}
+.revealed[hidden]{display:none}
+
 /* ---------- level select on the Learn pages ---------- */
 /* The sections were always there; this is only how you move between them. */
 .lvlnav{display:flex;flex-wrap:wrap;gap:6px;margin:30px 0 26px;
@@ -4691,17 +4702,29 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
       <span class="lbl">Best <b class="num" id="bestFrenzy">0</b></span></div>
     <div class="intro">
       <h2>FREQUENCY FRENZY</h2>
+      <p class="ghook">One band is boosted on a real Awaken loop. Name it before the clock
+         runs out &mdash; and every wave, the boost gets quieter.</p>
+      <!-- Day 3, 15 Sep 2026: these four paragraphs sat between the title and
+           START - about 250 words before anyone could play, on the screen an
+           experienced volunteer now lands on first. HOW TO PLAY already opens
+           a full illustrated tutorial covering the same ground, so this was a
+           worse copy of something one click away. Kept, not deleted: the
+           timing argument and the Eliminate rules are not in the tutorial. -->
+      <button type="button" class="revealer" data-reveal="frenzyBrief"
+              data-more="Read the full brief" data-less="Hide the brief"
+              aria-expanded="false">Read the full brief</button>
+      <div class="revealed" id="frenzyBrief" hidden>
       <p><b style="color:var(--white)">The drill.</b> One of the nine bands is boosted on the loop that is playing. The board below is the spectrum, low on the left and high on the right, split into those nine bands — hover a zone to see its frequency and name, and click the one you think is lifted. Correct answers build a streak and score more; a wrong answer costs a life and shows you what the band actually was.</p>
       <p><b style="color:var(--white)">The pressure.</b> Sixty seconds and three lives. Every four correct answers advances a wave and the boost gets <em>quieter</em> — 12 dB is obvious, 1.5 dB is a real engineer's ear. Pick your start level below; the ladder climbs from wherever you begin.</p>
       <p><b style="color:var(--white)">If you are stuck.</b> <em>Eliminate</em> knocks two wrong bands off the board so you can work by process of elimination — three on Rookie, two on Pro, none on Certified. The round then scores half, so use it to rescue a guess, not to coast.</p>
       <p><b style="color:var(--white)">Why it is timed.</b> At FOH you do not get to deliberate. You hear mud and your hand is already on the right band. Speed is the skill, not a gimmick — but build recognition in <em>Listen</em> first, then come here for speed.</p>
-    </div>
+      </div></div>
     <div class="btnrow" style="margin-bottom:12px">
       <span class="lbl">Start level</span>
       <div class="chips" id="sprintDiff"></div>
       <div class="spacer"></div>
       <button class="btn" id="howFrenzy">HOW TO PLAY</button>
-      <button class="btn" id="sprintRestart">RESTART</button>
+      <button class="btn" id="sprintRestart" hidden>RESTART</button>
       <button class="btn primary" id="sprintStart">START</button>
     </div>
     <div class="apanel">
@@ -7997,6 +8020,7 @@ $("#sprintStart").onclick=function(){
   spGain=GAIN_LADDER[spStartIdx];
   fzHintsLeft=FZ_HINTS[spStartIdx]; fzHintUsed=false;
   this.textContent="END";
+  $("#sprintRestart").hidden=false;   /* nothing to restart until now */
   $("#sprintRepeat").disabled=false;$("#sprintMute").disabled=false;
   $("#eqOn").disabled=false;$("#eqOff").disabled=false; eqOn=true; syncEq();
   updateFzHint();
