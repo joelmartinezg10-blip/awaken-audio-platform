@@ -13,7 +13,7 @@
     });
   };
 
-  var PROTECTED = { "/dashboard": 1, "/admin": 1, "/profile": 1 };
+  var PROTECTED = { "/dashboard": 1, "/admin": 1, "/profile": 1, "/reflections": 1 };
   var ADMIN_ONLY = { "/admin": 1 };
 
   /* ---------- small formatters ---------- */
@@ -287,22 +287,11 @@
       }
 
       // topics you could sensibly reflect on: anything you have started
-      var sel = $("#rfTopic"), panel = $("#dbReflect");
-      if (sel && panel) {
-        var eligible = topics.filter(function (t) {
-          return t.topic_slug !== "start-here" && t.status !== "not_started";
-        });
-        panel.hidden = !eligible.length;
-        if (eligible.length) {
-          var keep = sel.value;
-          sel.innerHTML = eligible.map(function (t) {
-            return '<option value="' + esc(t.topic_slug) + '">' + esc(t.topic_title) +
-              (t.reflect_status === "complete" ? " \u2014 written" : "") + "</option>";
-          }).join("");
-          if (keep) sel.value = keep;
-          loadReflection();
-        }
-      }
+      /* The form lives on #/reflections now; the dashboard keeps a pointer
+         to it. Topic options are filled by renderReflections(). */
+      var panel = $("#dbReflect");
+      if (panel) panel.hidden = false;
+      reflectTopics = topics;
 
       $("#dbTopics").innerHTML = topics.map(function (t) {
         var score = t.arcade_best_score != null
@@ -329,6 +318,32 @@
   }
 
   /* ---------- Reflect ---------- */
+  /* Topics, cached from the last dashboard render so the Reflections page
+     can fill its picker without a second round trip. */
+  var reflectTopics = null;
+
+  function fillReflectTopics() {
+    var sel = $("#rfTopic");
+    if (!sel) return Promise.resolve();
+    function paint(topics) {
+      var keep = sel.value;
+      /* A reflection about a service belongs to no module, and is the most
+         useful thing most volunteers will write. It goes first. */
+      var html = '<option value="">A service \u2014 no module</option>';
+      (topics || []).filter(function (t) { return t.topic_slug !== "start-here"; })
+        .forEach(function (t) {
+          html += '<option value="' + esc(t.topic_slug) + '">' + esc(t.topic_title) + "</option>";
+        });
+      sel.innerHTML = html;
+      sel.value = keep || "";
+    }
+    if (reflectTopics) { paint(reflectTopics); return Promise.resolve(); }
+    return D.getUserProgress().then(function (res) {
+      reflectTopics = (res && res.topics) || [];
+      paint(reflectTopics);
+    });
+  }
+
   function reflectHint(msg, ok) {
     var h = $("#rfHint"); if (!h) return;
     h.textContent = msg || ""; h.className = "hint" + (ok ? " ok" : "");
@@ -346,8 +361,13 @@
   }
 
   function loadReflection(servedOn) {
-    var slug = $("#rfTopic") && $("#rfTopic").value;
-    if (!slug) return;
+    var sel = $("#rfTopic");
+    if (!sel) return;
+    var slug = sel.value;          // "" is valid: an entry about a service
+    var ft = $("#rfFormTitle");
+    if (ft) ft.textContent = slug
+      ? "Reflect on " + (sel.options[sel.selectedIndex] || {}).text
+      : "Reflect on a service";
     var dateEl = $("#rfDate");
     if (dateEl) {
       if (servedOn) dateEl.value = servedOn;
@@ -399,6 +419,53 @@
       });
     });
   }
+  /* The Reflections page: the form at the top, everything ever written
+     underneath. A volunteer could previously only see the entry they were
+     editing, which made "look back over six weeks" impossible - the whole
+     reason the journal exists. */
+  function renderReflections() {
+    fillReflectTopics().then(function () { loadReflection(); });
+
+    var host = $("#rfJournal");
+    if (!host) return;
+    D.getMyReflections().then(function (rows) {
+      if (!rows.length) {
+        host.innerHTML = '<div class="emptynote">Nothing written yet. ' +
+          'The first one is the hardest; after that it takes four minutes.</div>';
+        return;
+      }
+      host.innerHTML = rows.map(function (r) {
+        function part(k, v) {
+          return v && v.trim()
+            ? '<div class="k">' + k + '</div><div class="v">' + esc(v) + "</div>" : "";
+        }
+        var tag = r.topic_title
+          ? '<span class="tp">' + esc(r.topic_title) + "</span>"
+          : '<span class="tp">Service</span>';
+        return '<div class="rfj"><div class="rfjh">' +
+            "<b>" + esc(fmtServed(r.served_on, r.service_label)) + "</b>" + tag +
+            '<span class="grow"></span>' +
+            '<button data-d="' + esc(r.served_on) + '" data-t="' +
+              esc(r.topic_slug || "") + '">Edit</button>' +
+          "</div>" +
+          part("What went well", r.went_well) +
+          part("What needs work", r.needs_work) +
+          part("Changing next time", r.next_rep) +
+        "</div>";
+      }).join("");
+
+      $$("#rfJournal button").forEach(function (b) {
+        b.onclick = function () {
+          var sel = $("#rfTopic");
+          if (sel) sel.value = b.dataset.t || "";
+          loadReflection(b.dataset.d);
+          var panel = $("#rfPanel");
+          if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+        };
+      });
+    });
+  }
+
   function wireReflect() {
     var sel = $("#rfTopic"), save = $("#rfSave");
     if (!sel || !save || save.__wired) return;
@@ -415,8 +482,7 @@
       loadReflection(D.todayISO());
     };
     save.onclick = function () {
-      var slug = sel.value;
-      if (!slug) return;
+      var slug = sel.value;        // "" means a service, not a module
       save.disabled = true; reflectHint("Saving\u2026");
       D.saveReflection(slug, $("#rfWell").value, $("#rfWork").value, $("#rfNext").value,
                        $("#rfDate") ? $("#rfDate").value : null,
@@ -428,13 +494,17 @@
           var enough = $("#rfWell").value.trim().length >= 40 &&
                        $("#rfWork").value.trim().length >= 40 &&
                        $("#rfNext").value.trim().length >= 20;
+          /* Only a topic entry can tick a topic's Reflect step. A service
+             note is not evidence you have reflected on compression, and
+             the database agrees - apply_reflection finds no module. */
           reflectHint(enough
-            ? "Saved \u2014 " + fmtServed($("#rfDate").value, $("#rfService").value) + "."
+            ? "Saved \u2014 " + fmtServed($("#rfDate").value, $("#rfService").value) +
+              (slug ? "." : ". Service entries do not tick a topic.")
             : "Saved, but too thin to count yet. A sentence on each of the first two, and one specific change.",
             enough);
           renderReflectionHistory(slug, $("#rfDate").value);
           var nb = $("#rfNew"); if (nb) nb.hidden = false;
-          renderDashboard();
+          renderReflections();
         })
         .catch(function () { save.disabled = false; reflectHint("Could not save. Try again."); });
     };
@@ -607,7 +677,8 @@
     silenceLeftBehind(location.hash.replace(/^#/, "") || "/");
     if (!guard()) return;
     var h = location.hash.replace(/^#/, "") || "/";
-    if (h === "/dashboard") { renderDashboard(); wireReflect(); }
+    if (h === "/dashboard") renderDashboard();
+    else if (h === "/reflections") { wireReflect(); renderReflections(); }
     else if (h === "/admin") renderAdmin();
     else if (h === "/courses") renderCourses();
     else if (h === "/login" && D.isSignedIn() && mode !== "recover")

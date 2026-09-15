@@ -1574,6 +1574,22 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
   text-transform:uppercase;padding:5px 9px;cursor:pointer}
 .rfentry button:hover{color:var(--white);border-color:#3a3a44}
 .rfentry.on b{color:var(--heat,#FF5A36)}
+
+.rfjournal{display:flex;flex-direction:column;gap:10px}
+.rfj{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#0d0d11}
+.rfj .rfjh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.rfj .rfjh b{font-size:15px;color:var(--white)}
+.rfj .rfjh .tp{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--accent);border:1px solid var(--line);
+  border-radius:20px;padding:3px 9px}
+.rfj .rfjh .grow{flex:1}
+.rfj .rfjh button{background:none;border:1px solid var(--line);border-radius:6px;
+  color:var(--dim);font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;padding:5px 9px;cursor:pointer}
+.rfj .rfjh button:hover{color:var(--white);border-color:#3a3a44}
+.rfj .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim);margin:10px 0 4px}
+.rfj .v{font-size:14px;line-height:1.6;color:var(--white)}
 </style>
 
 <a class="skip" href="#main">Skip to content</a>
@@ -2692,6 +2708,38 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
       <div class="refl" id="dbReflect" hidden>
         <h3>Reflect</h3>
         <p>The step people skip, and the reason somebody can run forty services
+           and only improve during the first three. Your reflections live on their
+           own page now, so you can look back at what you wrote after every
+           service rather than only the last one.</p>
+        <div class="foot"><a class="btn primary" href="#/reflections">Open my reflections &#8594;</a></div>
+      </div>
+
+      <p class="eyebrow" style="margin-top:44px">Additional courses</p>
+      <div class="coursegrid" id="dbCourses"></div>
+
+      <p class="note" style="margin-top:12px;color:var(--dim);font-size:13px">
+        Progress saves to your account as you go, so you can start on the booth
+        laptop and pick it up on your phone.
+      </p>
+    </div>
+  </section>
+</div>
+
+<!-- ================= REFLECTIONS ================= -->
+<div class="page" id="p-reflections" hidden>
+  <section class="band" style="border-bottom:0">
+    <div class="wrap">
+      <p class="eyebrow">Your account</p>
+      <h1>My Reflections</h1>
+      <p class="lead" style="margin-top:18px;max-width:62ch">
+        One entry per service. Write it while it is fresh, then read them back
+        in a row &mdash; the pattern across six weeks is the thing worth seeing,
+        and it is invisible if you only ever keep the latest one.
+      </p>
+
+      <div class="refl" id="rfPanel">
+        <h3 id="rfFormTitle">New reflection</h3>
+        <p>The step people skip, and the reason somebody can run forty services
            and only improve during the first three. Pick a topic you have
            actually used, and be honest &mdash; this goes to whoever is
            developing you, not to a leaderboard.</p>
@@ -2722,13 +2770,8 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
         </div>
       </div>
 
-      <p class="eyebrow" style="margin-top:44px">Additional courses</p>
-      <div class="coursegrid" id="dbCourses"></div>
-
-      <p class="note" style="margin-top:12px;color:var(--dim);font-size:13px">
-        Progress saves to your account as you go, so you can start on the booth
-        laptop and pick it up on your phone.
-      </p>
+      <p class="eyebrow" style="margin-top:44px">Everything you have written</p>
+      <div class="rfjournal" id="rfJournal"></div>
     </div>
   </section>
 </div>
@@ -4816,6 +4859,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     '/login':   {el:'p-login',   accent:'#FF5A36', g:'login'},
     '/dashboard':{el:'p-dashboard',accent:'#FF5A36', g:'me'},
     '/courses': {el:'p-courses', accent:'#FF5A36', g:'me'},
+    '/reflections':{el:'p-reflections',accent:'#FF5A36', g:'me'},
     '/admin':   {el:'p-admin',   accent:'#7657FF', g:'me'},
     '/profile': {el:'p-profile', accent:'#FF5A36', g:'me'},
     '/iem':     {el:'p-iem',     accent:'#7657FF', g:'training'}
@@ -4824,7 +4868,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     program:  [['/program','Program Overview'],['/ear','Critical Listening'],['/proc','Processing']],
     seats:    [['/foh','Front of House'],['/mons','Monitors']],
     training: [['/arcade','Arcade'],['/iem','IEM Mix Room']],
-    me:       [['/profile','My Profile'],['/dashboard','My Progress'],['/courses','Courses'],['/admin','Admin']]
+    me:       [['/profile','My Profile'],['/dashboard','My Progress'],['/reflections','Reflections'],['/courses','Courses'],['/admin','Admin']]
   };
   function soft(hex){
     var r=parseInt(hex.substr(1,2),16),g=parseInt(hex.substr(3,2),16),b=parseInt(hex.substr(5,2),16);

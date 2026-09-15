@@ -369,20 +369,39 @@
      served_on). */
   function getReflection(topicSlug, servedOn) {
     if (!state.user) return Promise.resolve(null);
-    return sb.from("reflections")
-      .select("id,served_on,service_label,went_well,needs_work,next_rep,updated_at,topics!inner(slug)")
-      .eq("profile_id", state.user.id).eq("topics.slug", topicSlug)
-      .eq("served_on", servedOn || todayISO()).maybeSingle()
+    var q = sb.from("reflections")
+      .select("id,served_on,service_label,went_well,needs_work,next_rep,updated_at,topic_id,topics(slug)")
+      .eq("profile_id", state.user.id)
+      .eq("served_on", servedOn || todayISO());
+    /* No topic means the entry is about a service rather than a module.
+       !inner would drop exactly those rows, so filter on the column. */
+    q = topicSlug ? q.eq("topics.slug", topicSlug).not("topic_id", "is", null)
+                  : q.is("topic_id", null);
+    return q.maybeSingle()
       .then(function (r) { return r.error ? (note(r.error, "getReflection"), null) : r.data; });
+  }
+
+  /* Everything this person has written, newest service first, topic
+     entries and service entries together. */
+  function getMyReflections() {
+    if (!state.user) return Promise.resolve([]);
+    return sb.rpc("get_member_reflections",
+      { p_member: state.user.id, p_course_slug: COURSE })
+      .then(function (r) {
+        if (r.error) { note(r.error, "getMyReflections"); return []; }
+        return r.data || [];
+      });
   }
 
   /* Every entry for one topic, newest service first - the journal. */
   function getReflectionHistory(topicSlug) {
     if (!state.user) return Promise.resolve([]);
-    return sb.from("reflections")
-      .select("id,served_on,service_label,went_well,needs_work,next_rep,updated_at,topics!inner(slug)")
-      .eq("profile_id", state.user.id).eq("topics.slug", topicSlug)
-      .order("served_on", { ascending: false })
+    var q = sb.from("reflections")
+      .select("id,served_on,service_label,went_well,needs_work,next_rep,updated_at,topic_id,topics(slug)")
+      .eq("profile_id", state.user.id);
+    q = topicSlug ? q.eq("topics.slug", topicSlug).not("topic_id", "is", null)
+                  : q.is("topic_id", null);
+    return q.order("served_on", { ascending: false })
       .then(function (r) { return r.error ? (note(r.error, "getReflectionHistory"), []) : (r.data || []); });
   }
 
@@ -608,6 +627,7 @@
 
     getReflection: getReflection,
     getReflectionHistory: getReflectionHistory,
+    getMyReflections: getMyReflections,
     deleteReflection: deleteReflection,
     todayISO: todayISO,
     saveReflection: saveReflection,
