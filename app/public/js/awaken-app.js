@@ -104,6 +104,20 @@
      not remember. The authoritative signal is the PASSWORD_RECOVERY
      event, which awaken-data.js now records; the URL test stays as a
      belt-and-braces check for the older link format. */
+  /* A recovery form is only honest if there is a session behind it. Reset
+     tokens are single use and expire, so an old link in an inbox lands here
+     with nothing attached - and offering "Set new password" to somebody the
+     server will refuse is the worst of both: they type a password, get
+     "Auth session missing!", and have no idea they need a fresh link. */
+  function recoveryUsable() {
+    return isRecovering() && D.isSignedIn();
+  }
+  function deadLink() {
+    setMode("signin");
+    setMsg("error", "That reset link has expired or was already used \u2014 " +
+                    "they only work once. Send yourself a new one.");
+  }
+
   function isRecovering() {
     return /type=recovery/.test(location.hash) ||
            /type=recovery/.test(location.search) ||
@@ -245,7 +259,15 @@
         busy(true);
         return D.updatePassword($("#lg-pass").value).then(function (r) {
           busy(false);
-          if (r && r.error) return setMsg("error", esc(r.error.message));
+          if (r && r.error) {
+            /* Supabase says "Auth session missing!", which tells a volunteer
+               nothing. It means the link is spent. */
+            if (/session|jwt|token/i.test(r.error.message || "")) {
+              if (D.clearRecovery) D.clearRecovery();
+              return deadLink();
+            }
+            return setMsg("error", esc(r.error.message));
+          }
           if (D.clearRecovery) D.clearRecovery();
           setMsg("ok", "Password updated.");
           setTimeout(function () { location.hash = "#/dashboard"; }, 900);
@@ -755,7 +777,7 @@
     /* Mid-recovery there is exactly one thing to do. The session is real,
        so every other page would happily render - and the account would be
        left on the password its owner came here to change. */
-    if (isRecovering() && location.hash !== "#/login") {
+    if (recoveryUsable() && location.hash !== "#/login") {
       setMode("recover");
       location.replace("#/login");
       return;
@@ -767,7 +789,11 @@
     else if (h === "/reflections") { wireReflect(); renderReflections(); }
     else if (h === "/admin") renderAdmin();
     else if (h === "/courses") renderCourses();
-    else if (h === "/reset") { setMode("recover"); location.replace("#/login"); }
+    else if (h === "/reset") {
+      /* Old reset emails point here. Honour them only if the link worked. */
+      if (recoveryUsable()) setMode("recover"); else deadLink();
+      location.replace("#/login");
+    }
     else if (h === "/login" && D.isSignedIn() && mode !== "recover")
       location.replace(D.isAdmin() ? "#/admin" : "#/dashboard");
   }
@@ -786,13 +812,15 @@
       return;
     }
     wireAuth();
-    setMode(isRecovering() ? "recover" : "signin");
+    if (recoveryUsable()) setMode("recover");
+    else if (isRecovering()) deadLink();
+    else setMode("signin");
     /* The event can arrive after boot, because the client resolves the
        link asynchronously. Whenever it does, take over: send them to the
        login card and refuse to show anything else until a new password
        is set. */
     D.onChange(function () {
-      if (!isRecovering() || mode === "recover") return;
+      if (!recoveryUsable() || mode === "recover") return;
       setMode("recover");
       if (location.hash !== "#/login") location.replace("#/login");
     });
