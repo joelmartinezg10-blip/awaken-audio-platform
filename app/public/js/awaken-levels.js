@@ -16,6 +16,21 @@
  * Runtime rather than markup: the sections are deeply nested and a
  * hand-wrap would risk the content. Walking siblings from each .gnum to
  * the next cannot damage anything it does not understand.
+ *
+ * ---------- HOW TO TURN THIS OFF ----------
+ * Four ways, in increasing permanence. None of them touch a word of the
+ * training material, because this file never edits any.
+ *
+ *   1. For one visit:  add ?levels=off to the URL.
+ *   2. For this browser, permanently:  ?levels=off&remember=1
+ *      (undo with ?levels=on&remember=1)
+ *   3. For one module:  delete its data-levels attribute in index.html.
+ *   4. For the whole site:  delete the <script src="/js/awaken-levels.js">
+ *      tag in index.html. The pages render exactly as they did before.
+ *
+ * Nothing here is destructive: the sections are MOVED into a wrapper in
+ * the live DOM, never rewritten, so a reload with it off is the original
+ * page.
  * ============================================================ */
 (function (global) {
   "use strict";
@@ -103,7 +118,24 @@
       .trim();
   }
 
+  var OFF_KEY = "awaken.levels.off";
+  function disabled() {
+    var q = "";
+    try { q = global.location.search || ""; } catch (e) {}
+    var wants = /[?&]levels=off\b/.test(q);
+    var back  = /[?&]levels=on\b/.test(q);
+    var keep  = /[?&]remember=1\b/.test(q);
+    try {
+      if (wants && keep) localStorage.setItem(OFF_KEY, "1");
+      if (back  && keep) localStorage.removeItem(OFF_KEY);
+      if (back) return false;
+      if (wants) return true;
+      return localStorage.getItem(OFF_KEY) === "1";
+    } catch (e) { return wants; }
+  }
+
   function init() {
+    if (disabled()) return;
     Array.prototype.forEach.call(document.querySelectorAll("[data-levels]"), build);
   }
 
