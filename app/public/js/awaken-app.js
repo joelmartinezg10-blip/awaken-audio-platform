@@ -130,6 +130,11 @@
     $$("#authTabs button").forEach(function (b) {
       b.setAttribute("aria-selected", String(b.dataset.mode === tabMode));
     });
+    /* Mid-recovery the route guard bounces every other destination back
+       here, so "Continue without an account" would be a link that looks
+       like a way out and isn't. Hide the row rather than lie. */
+    var lr = $(".auth-linkrow");
+    if (lr) lr.hidden = (m === "recover");
     var fl = $("#forgotLink"), bl = $("#backToSignin");
     if (fl) fl.hidden = (m !== "signin");
     if (bl) bl.hidden = (m !== "forgot");
@@ -138,6 +143,18 @@
     $("#authCampusRow").hidden = (m !== "signup");
     if (m === "signup") fillCampusSelect();
     $("#authPassRow").hidden   = (m === "forgot");
+    $("#authPass2Row").hidden  = !(m === "signup" || m === "recover");
+    $("#pwMatch").hidden       = true;
+    $("#lg-pass2").value       = "";
+    /* Changing mode re-hides any revealed password. Leaving one on screen
+       because somebody clicked a tab is not a decision they made. */
+    $$(".pweye").forEach(function (eye) {
+      var input = $("#" + eye.dataset.for);
+      if (input) input.type = "password";
+      eye.setAttribute("aria-pressed", "false");
+      eye.setAttribute("aria-label", "Show password");
+      eye.setAttribute("title", "Show password");
+    });
     $("#authEmailRow").hidden  = (m === "recover");
     $("#lg-email").required    = (m !== "recover");
     $("#authSubmit").textContent = SUBMIT[m];
@@ -187,12 +204,44 @@
     $$("#authTabs button, #forgotLink, #backToSignin").forEach(function (b) {
       b.onclick = function () { setMode(b.dataset.mode); };
     });
+
+    /* Show password. Typing a password you cannot see, on a phone, with
+       autocorrect fighting you, is the most common reason a new account
+       "will not let me in" - the password is simply not what they think
+       they typed. Each field toggles on its own. */
+    $$(".pweye").forEach(function (eye) {
+      eye.onclick = function () {
+        var input = $("#" + eye.dataset.for);
+        if (!input) return;
+        var show = input.type === "password";
+        input.type = show ? "text" : "password";
+        eye.setAttribute("aria-pressed", String(show));
+        var label = show ? "Hide password" : "Show password";
+        eye.setAttribute("aria-label", label);
+        eye.setAttribute("title", label);
+        /* Keep the caret where they left it rather than jumping to the end. */
+        var pos = input.selectionStart;
+        input.focus();
+        try { input.setSelectionRange(pos, pos); } catch (e) {}
+      };
+    });
+
+    /* Tell them it does not match while they can still see both fields,
+       not after they press the button. */
+    function checkMatch() {
+      var a = $("#lg-pass").value, b2 = $("#lg-pass2").value;
+      $("#pwMatch").hidden = !(b2 && a !== b2);
+    }
+    $("#lg-pass").addEventListener("input", checkMatch);
+    $("#lg-pass2").addEventListener("input", checkMatch);
     $("#authForm").addEventListener("submit", function (e) {
       e.preventDefault();
       var email = $("#lg-email").value.trim();
       if (mode === "recover") {
         if ($("#lg-pass").value.length < 8)
           return setMsg("error", "Passwords need to be at least 8 characters.");
+        if ($("#lg-pass").value !== $("#lg-pass2").value)
+          return setMsg("error", "The two passwords do not match.");
         busy(true);
         return D.updatePassword($("#lg-pass").value).then(function (r) {
           busy(false);
@@ -209,6 +258,8 @@
       if (!email) return setMsg("error", "Enter your email address.");
       if (mode !== "forgot" && pass.length < 8)
         return setMsg("error", "Passwords need to be at least 8 characters.");
+      if (mode === "signup" && pass !== $("#lg-pass2").value)
+        return setMsg("error", "The two passwords do not match.");
       if (mode === "signup" && !name)
         return setMsg("error", "Enter your name so your admin knows who you are.");
       if (mode === "signup" && campusesAvailable && !campus)

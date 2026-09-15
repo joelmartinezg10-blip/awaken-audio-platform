@@ -376,6 +376,27 @@ section.band.tight{padding:56px 0}
    greyed out and showed the "blocked" cursor to every visitor while
    working perfectly. The busy state is handled by button[disabled] below. */
 .lg-btn{justify-content:center;margin-top:4px}
+/* ---------- password fields ---------- */
+/* The input keeps its own margin-bottom, so the wrapper must not add one
+   or the rows drift apart from every other field on the card. */
+.pwwrap{position:relative}
+.pwwrap input{padding-right:46px}
+.pweye{
+  position:absolute;right:1px;top:1px;height:43px;width:44px;
+  display:flex;align-items:center;justify-content:center;
+  background:none;border:0;padding:0;cursor:pointer;color:#7C766D;
+  border-radius:0 3px 3px 0;transition:color .12s}
+.pweye:hover{color:var(--white)}
+.pweye:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
+.pweye svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+/* One icon, two states: the slash is the "currently visible" state, because
+   the button says what clicking it will do next. */
+.pweye .pw-shut{opacity:0}
+.pweye[aria-pressed=true] .pw-shut{opacity:1}
+.pwmatch{margin:-12px 0 16px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;color:#FF8A8D}
+.pwmatch[hidden]{display:none}
 .login-alt{
   display:flex;justify-content:space-between;gap:12px;margin-top:16px;
   font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
@@ -796,6 +817,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 .auth-msg[data-kind=info]{color:var(--dim)}
 .auth-msg[hidden]{display:none}
 .login-form button[disabled]{opacity:.45;cursor:not-allowed}
+.auth-linkrow[hidden]{display:none}
 .auth-linkrow{
   display:flex;justify-content:space-between;gap:12px;margin-top:14px;
   font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
@@ -2641,8 +2663,38 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
           </div>
           <div id="authPassRow">
             <label for="lg-pass">Password</label>
-            <input id="lg-pass" name="password" type="password" autocomplete="current-password"
-                   placeholder="At least 8 characters">
+            <div class="pwwrap">
+              <input id="lg-pass" name="password" type="password" autocomplete="current-password"
+                     placeholder="At least 8 characters">
+              <button type="button" class="pweye" data-for="lg-pass"
+                      aria-label="Show password" aria-pressed="false" title="Show password">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path class="pw-open" d="M1.6 12S5.6 5.2 12 5.2 22.4 12 22.4 12 18.4 18.8 12 18.8 1.6 12 1.6 12Z"/>
+                  <circle class="pw-open" cx="12" cy="12" r="3.1"/>
+                  <path class="pw-shut" d="M3 3l18 18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <!-- Day 3, 15 Sep 2026: a confirm field only where a password is
+               being SET. Asking someone to type their existing password twice
+               to sign in is friction with no payoff; mistyping the one you are
+               about to be locked behind is the whole risk. -->
+          <div id="authPass2Row" hidden>
+            <label for="lg-pass2">Confirm password</label>
+            <div class="pwwrap">
+              <input id="lg-pass2" name="password2" type="password" autocomplete="new-password"
+                     placeholder="Type it again">
+              <button type="button" class="pweye" data-for="lg-pass2"
+                      aria-label="Show password" aria-pressed="false" title="Show password">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path class="pw-open" d="M1.6 12S5.6 5.2 12 5.2 22.4 12 22.4 12 18.4 18.8 12 18.8 1.6 12 1.6 12Z"/>
+                  <circle class="pw-open" cx="12" cy="12" r="3.1"/>
+                  <path class="pw-shut" d="M3 3l18 18"/>
+                </svg>
+              </button>
+            </div>
+            <div class="pwmatch" id="pwMatch" hidden>Passwords do not match</div>
           </div>
           <div id="authCampusRow" hidden>
             <label for="lg-campus">Campus</label>
