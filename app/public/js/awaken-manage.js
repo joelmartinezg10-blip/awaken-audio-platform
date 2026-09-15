@@ -43,6 +43,17 @@
   }
 
   var state = { campuses: [], directorCampus: null, roster: [], scope: null, tab: "team" };
+  /* Reflections are journal entries since 15 Sep 2026: what a trainer
+     wants to see is the service it was written about, not when the text
+     was last touched. Falls back for rows written before the change. */
+  function servedLabel(r) {
+    if (!r.served_on) return ago(r.updated_at);
+    var p = String(r.served_on).split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    var txt = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return r.service_label ? txt + " \u00b7 " + r.service_label : txt;
+  }
+
 
   /* ---------- who is looking, and therefore which tabs exist ---------- */
   function refreshTabs() {
@@ -178,7 +189,8 @@
     D.getCampusReflections(slug, 25).then(function (rows) {
       $("#cpRefls").innerHTML = rows.length ? rows.map(function (r) {
         return '<div class="reflcard"><div class="rh">' + esc(r.full_name) +
-          " &middot; " + esc(r.topic_title) + " &middot; " + ago(r.updated_at) + "</div>" +
+          " &middot; " + esc(r.topic_title) + " &middot; " +
+          esc(servedLabel(r)) + "</div>" +
           (r.went_well  ? '<div class="rq"><b>Went well.</b> ' + esc(r.went_well) + "</div>" : "") +
           (r.needs_work ? '<div class="rq"><b>Needs work.</b> ' + esc(r.needs_work) + "</div>" : "") +
           (r.next_rep   ? '<div class="rq"><b>Next rep.</b> ' + esc(r.next_rep) + "</div>" : "") +

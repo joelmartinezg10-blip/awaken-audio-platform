@@ -362,21 +362,59 @@
    * because the database says so, not because the UI hid them.
    * ============================================================ */
   /* ---------- Reflect ---------- */
-  function getReflection(topicSlug) {
+  /* One entry per topic per served date since 15 Sep 2026, so this asks
+     for a specific date rather than "the" reflection. Without a date it
+     returns today's, which is what the form opens on. maybeSingle is
+     still correct: the unique constraint is now (profile_id, topic_id,
+     served_on). */
+  function getReflection(topicSlug, servedOn) {
     if (!state.user) return Promise.resolve(null);
     return sb.from("reflections")
-      .select("went_well,needs_work,next_rep,updated_at,topics!inner(slug)")
-      .eq("profile_id", state.user.id).eq("topics.slug", topicSlug).maybeSingle()
+      .select("id,served_on,service_label,went_well,needs_work,next_rep,updated_at,topics!inner(slug)")
+      .eq("profile_id", state.user.id).eq("topics.slug", topicSlug)
+      .eq("served_on", servedOn || todayISO()).maybeSingle()
       .then(function (r) { return r.error ? (note(r.error, "getReflection"), null) : r.data; });
   }
 
-  function saveReflection(topicSlug, wentWell, needsWork, nextRep) {
+  /* Every entry for one topic, newest service first - the journal. */
+  function getReflectionHistory(topicSlug) {
+    if (!state.user) return Promise.resolve([]);
+    return sb.from("reflections")
+      .select("id,served_on,service_label,went_well,needs_work,next_rep,updated_at,topics!inner(slug)")
+      .eq("profile_id", state.user.id).eq("topics.slug", topicSlug)
+      .order("served_on", { ascending: false })
+      .then(function (r) { return r.error ? (note(r.error, "getReflectionHistory"), []) : (r.data || []); });
+  }
+
+  function deleteReflection(id) {
+    if (!state.user) return Promise.reject(new Error("signed out"));
+    return sb.from("reflections").delete().eq("id", id).eq("profile_id", state.user.id)
+      .then(function (r) {
+        if (r.error) { note(r.error, "deleteReflection"); throw r.error; }
+        state.loadedAt = 0; emit();
+      });
+  }
+
+  /* Local calendar date, not UTC. new Date().toISOString() is a day ahead
+     for anyone west of Greenwich after 4pm - which is every Sunday
+     evening in San Diego, the exact moment somebody sits down to write
+     one of these. */
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + "-" +
+      String(d.getMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getDate()).padStart(2, "0");
+  }
+
+  function saveReflection(topicSlug, wentWell, needsWork, nextRep, servedOn, serviceLabel) {
     if (!state.user) return Promise.reject(new Error("signed out"));
     return sb.rpc("save_reflection", {
       p_topic_slug: topicSlug,
       p_went_well: String(wentWell || "").slice(0, 2000),
       p_needs_work: String(needsWork || "").slice(0, 2000),
       p_next_rep: String(nextRep || "").slice(0, 2000),
+      p_served_on: servedOn || todayISO(),
+      p_service_label: serviceLabel ? String(serviceLabel).slice(0, 80) : null,
       p_course_slug: COURSE
     }).then(function (r) {
       if (r.error) { note(r.error, "saveReflection"); throw r.error; }
@@ -569,6 +607,9 @@
     flush: flush,
 
     getReflection: getReflection,
+    getReflectionHistory: getReflectionHistory,
+    deleteReflection: deleteReflection,
+    todayISO: todayISO,
     saveReflection: saveReflection,
     getMemberReflections: getMemberReflections,
 

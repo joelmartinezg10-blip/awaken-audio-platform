@@ -333,27 +333,94 @@
     var h = $("#rfHint"); if (!h) return;
     h.textContent = msg || ""; h.className = "hint" + (ok ? " ok" : "");
   }
-  function loadReflection() {
+  /* A reflection is now one entry per topic per SERVED DATE, so the form
+     is always editing a particular date. Opening the panel lands on
+     today; the list underneath switches between earlier entries. */
+  function fmtServed(iso, label) {
+    if (!iso) return "";
+    var p = String(iso).split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);   // local, not UTC
+    var txt = d.toLocaleDateString(undefined,
+      { weekday: "short", month: "short", day: "numeric" });
+    return label ? txt + " \u00b7 " + label : txt;
+  }
+
+  function loadReflection(servedOn) {
     var slug = $("#rfTopic") && $("#rfTopic").value;
     if (!slug) return;
+    var dateEl = $("#rfDate");
+    if (dateEl) {
+      if (servedOn) dateEl.value = servedOn;
+      if (!dateEl.value) dateEl.value = D.todayISO();
+      dateEl.max = D.todayISO();          // a reflection is about a service that happened
+    }
+    var when = dateEl ? dateEl.value : D.todayISO();
     reflectHint("");
-    D.getReflection(slug).then(function (r) {
+    D.getReflection(slug, when).then(function (r) {
       $("#rfWell").value = (r && r.went_well) || "";
       $("#rfWork").value = (r && r.needs_work) || "";
       $("#rfNext").value = (r && r.next_rep) || "";
-      if (r && r.updated_at) reflectHint("Last saved " + ago(r.updated_at), true);
+      if ($("#rfService")) $("#rfService").value = (r && r.service_label) || "";
+      if (r && r.updated_at) reflectHint("Saved " + ago(r.updated_at), true);
+      else reflectHint("New entry for " + fmtServed(when), false);
+      var nb = $("#rfNew"); if (nb) nb.hidden = !r;
+    });
+    renderReflectionHistory(slug, when);
+  }
+
+  function renderReflectionHistory(slug, current) {
+    var wrap = $("#rfPast"), list = $("#rfPastList");
+    if (!wrap || !list) return;
+    D.getReflectionHistory(slug).then(function (rows) {
+      var others = rows.filter(function (r) { return r.served_on !== current; });
+      wrap.hidden = !others.length;
+      if (!others.length) return;
+      list.innerHTML = others.map(function (r) {
+        return '<div class="rfentry" data-d="' + esc(r.served_on) + '">' +
+          "<b>" + esc(fmtServed(r.served_on, r.service_label)) + "</b>" +
+          '<span class="grow"></span>' +
+          '<small>' + esc((r.went_well || "").slice(0, 44)) +
+            ((r.went_well || "").length > 44 ? "\u2026" : "") + "</small>" +
+          '<button data-act="open">Open</button>' +
+          '<button data-act="del" data-id="' + esc(r.id) + '">Delete</button>' +
+        "</div>";
+      }).join("");
+      $$("#rfPastList button").forEach(function (b) {
+        b.onclick = function () {
+          var row = b.closest(".rfentry");
+          if (b.dataset.act === "open") { loadReflection(row.dataset.d); return; }
+          if (!global.confirm("Delete your reflection from " +
+              fmtServed(row.dataset.d) + "? This cannot be undone.")) return;
+          b.disabled = true;
+          D.deleteReflection(b.dataset.id)
+            .then(function () { loadReflection($("#rfDate").value); })
+            .catch(function () { b.disabled = false; reflectHint("Could not delete."); });
+        };
+      });
     });
   }
   function wireReflect() {
     var sel = $("#rfTopic"), save = $("#rfSave");
     if (!sel || !save || save.__wired) return;
     save.__wired = true;
-    sel.onchange = loadReflection;
+    /* Not `sel.onchange = loadReflection` - that hands the change Event in
+       as servedOn. Changing topic resets to today. */
+    sel.onchange = function () { $("#rfDate").value = D.todayISO(); loadReflection(); };
+    var dateEl = $("#rfDate");
+    if (dateEl) dateEl.onchange = function () { loadReflection(dateEl.value); };
+    var newBtn = $("#rfNew");
+    if (newBtn) newBtn.onclick = function () {
+      $("#rfDate").value = D.todayISO();
+      if ($("#rfService")) $("#rfService").value = "";
+      loadReflection(D.todayISO());
+    };
     save.onclick = function () {
       var slug = sel.value;
       if (!slug) return;
       save.disabled = true; reflectHint("Saving\u2026");
-      D.saveReflection(slug, $("#rfWell").value, $("#rfWork").value, $("#rfNext").value)
+      D.saveReflection(slug, $("#rfWell").value, $("#rfWork").value, $("#rfNext").value,
+                       $("#rfDate") ? $("#rfDate").value : null,
+                       $("#rfService") ? $("#rfService").value : null)
         .then(function () {
           save.disabled = false;
           /* the same bar the database applies, said in words rather than
@@ -362,9 +429,11 @@
                        $("#rfWork").value.trim().length >= 40 &&
                        $("#rfNext").value.trim().length >= 20;
           reflectHint(enough
-            ? "Saved \u2014 Reflect complete for this topic."
+            ? "Saved \u2014 " + fmtServed($("#rfDate").value, $("#rfService").value) + "."
             : "Saved, but too thin to count yet. A sentence on each of the first two, and one specific change.",
             enough);
+          renderReflectionHistory(slug, $("#rfDate").value);
+          var nb = $("#rfNew"); if (nb) nb.hidden = false;
           renderDashboard();
         })
         .catch(function () { save.disabled = false; reflectHint("Could not save. Try again."); });
@@ -480,7 +549,8 @@
         return '<div class="topicrow" style="grid-template-columns:1fr !important;' +
           'align-items:flex-start;cursor:default;padding:18px 20px">' +
           '<span class="tn">' + esc(r.topic_title) +
-            "<small>" + ago(r.updated_at) + "</small></span>" +
+            "<small>" + esc(fmtServed(r.served_on, r.service_label) ||
+                            ago(r.updated_at)) + "</small></span>" +
           block("What went well", r.went_well) +
           block("What needs work", r.needs_work) +
           block("Changing next time", r.next_rep) +

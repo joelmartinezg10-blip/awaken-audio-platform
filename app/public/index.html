@@ -1549,6 +1549,31 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-iem .chsheet .csrow .ghost.on{background:var(--heat);border-color:var(--heat);color:#0b0b0d;font-weight:600}
 #p-iem #ovl4{align-items:flex-end}
 @media (prefers-reduced-motion:reduce){#p-iem *{transition:none!important}}
+
+/* ---------- reflection journal (15 Sep 2026) ---------- */
+.rfwhen{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0 4px}
+.rfwhen label{display:flex;flex-direction:column;gap:5px;flex:1 1 200px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim)}
+.rfwhen .opt{letter-spacing:.06em;opacity:.6;text-transform:none}
+.rfwhen input{background:#0d0d11;border:1px solid var(--line);border-radius:7px;
+  padding:9px 11px;color:var(--white);font:inherit;font-size:14px;
+  color-scheme:dark;min-width:0}
+.rfwhen input:focus{outline:none;border-color:#3a3a44}
+.rfpast{margin-top:22px;border-top:1px solid var(--line);padding-top:16px}
+.rfpast h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim);margin:0 0 10px;font-weight:400}
+.rfentry{display:flex;align-items:center;gap:12px;padding:9px 0;
+  border-bottom:1px solid rgba(255,255,255,.04)}
+.rfentry:last-child{border-bottom:none}
+.rfentry b{font-size:13px;color:var(--white);font-weight:600}
+.rfentry small{font-size:12px;color:var(--dim)}
+.rfentry .grow{flex:1}
+.rfentry button{background:none;border:1px solid var(--line);border-radius:6px;
+  color:var(--dim);font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;padding:5px 9px;cursor:pointer}
+.rfentry button:hover{color:var(--white);border-color:#3a3a44}
+.rfentry.on b{color:var(--heat,#FF5A36)}
 </style>
 
 <a class="skip" href="#main">Skip to content</a>
@@ -2672,6 +2697,14 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
            developing you, not to a leaderboard.</p>
         <label for="rfTopic">Topic</label>
         <div class="sel"><select id="rfTopic"></select></div>
+        <div class="rfwhen">
+          <label>Service date
+            <input type="date" id="rfDate">
+          </label>
+          <label>Which service <span class="opt">optional</span>
+            <input type="text" id="rfService" maxlength="80" placeholder="9:00 Sunday, Midweek, Rehearsal">
+          </label>
+        </div>
         <label for="rfWell">What went well?</label>
         <textarea id="rfWell" placeholder="What actually worked when you used this in a room?"></textarea>
         <label for="rfWork">What needs work?</label>
@@ -2680,7 +2713,12 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
         <textarea id="rfNext" placeholder="One specific thing."></textarea>
         <div class="foot">
           <button class="btn primary" id="rfSave">Save reflection</button>
+          <button class="btn" id="rfNew" type="button" hidden>New entry</button>
           <span class="hint" id="rfHint"></span>
+        </div>
+        <div class="rfpast" id="rfPast" hidden>
+          <h4>Earlier entries for this topic</h4>
+          <div id="rfPastList"></div>
         </div>
       </div>
 
