@@ -248,27 +248,35 @@
           '<div class="mn">' + esc(r.full_name || "Unnamed") + " " + roleTag(r) +
             "<small>" + esc(r.email) + " &middot; " + (r.percent || 0) + "% &middot; " +
             ago(r.last_active_at) + "</small></div>" +
-          '<div class="sel"><select data-act="campus"' + (locked ? " disabled" : "") + ">" +
-            campusOptions(r.campus) + "</select></div>" +
-          '<div class="sel"><select data-act="trainer"' +
+          '<div><span class="sl">Campus</span><div class="sel">' +
+            '<select data-act="campus" aria-label="Campus for ' + esc(r.full_name || r.email) + '"' +
+            (locked ? " disabled" : "") + ">" +
+            campusOptions(r.campus) + "</select></div></div>" +
+          '<div><span class="sl">Trainer</span><div class="sel">' +
+            '<select data-act="trainer" aria-label="Trainer for ' + esc(r.full_name || r.email) + '"' +
             (r.role !== "user" || locked ? " disabled" : "") + ">" +
-            trainerOptions(state.roster, r.trainer_id) + "</select></div>" +
-          '<div class="sel"><select data-act="role"' + (locked ? " disabled" : "") + ">" +
+            trainerOptions(state.roster, r.trainer_id) + "</select></div></div>" +
+          '<div><span class="sl">Role</span><div class="sel">' +
+            '<select data-act="role" aria-label="Role for ' + esc(r.full_name || r.email) + '"' +
+            (locked ? " disabled" : "") + ">" +
             '<option value="user"' + (r.role === "user" ? " selected" : "") + ">Engineer</option>" +
             '<option value="admin"' + (r.role === "admin" ? " selected" : "") + ">Trainer</option>" +
-          "</select></div></div>";
+          "</select></div></div></div>";
       }).join("") : '<div class="emptynote">Nobody matches that.</div>';
 
       $$("#mgList .mgrow select").forEach(function (sel) {
         sel.onchange = function () {
-          var id  = sel.closest(".mgrow").dataset.id;
+          var row = sel.closest(".mgrow");
+          var id  = row.dataset.id;
+          var who = (row.querySelector(".mn") ? row.querySelector(".mn").firstChild.nodeValue : "").trim();
           var act = sel.dataset.act, val = sel.value;
+          var what = act === "campus" ? "Campus" : act === "role" ? "Role" : "Trainer";
           var p;
           if (act === "campus")  p = D.setMemberCampus(id, val || null);
           else if (act === "role") p = D.setMemberRole(id, val);
           else p = val ? D.assignMember(id, val) : D.unassignMember(id);
           sel.disabled = true;
-          p.then(function () { renderManage(); })
+          p.then(function () { toast(what + " saved" + (who ? " for " + who : "")); renderManage(); })
            .catch(function (e) {
              sel.disabled = false;
              global.alert("That change was refused by the database:\n\n" +
@@ -280,6 +288,20 @@
     });
 
     renderDirectors();
+  }
+
+  /* Every dropdown writes on change with no Save button, which is right -
+     but a successful save looked like almost nothing, so "saved" and "my
+     click did not register" were indistinguishable. Two lines of feedback
+     removes a whole category of doubt from every director handed this. */
+  var toastTimer = null;
+  function toast(msg) {
+    var el = $("#mgToast");
+    if (!el) return;
+    el.textContent = "\u2713 " + msg;
+    el.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove("on"); }, 2600);
   }
 
   function renderDirectors() {

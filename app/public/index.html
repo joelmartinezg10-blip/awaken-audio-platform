@@ -3106,8 +3106,17 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
           </select></div>
           <div class="spacer"></div>
           <span class="lbl" id="mgCount">&mdash;</span>
+          <span class="mgtoast" id="mgToast" role="status" aria-live="polite"></span>
         </div>
 
+        <!-- Day 3, 15 Sep 2026: the three dropdowns sat in a row with nothing
+             saying which was which - Joel could not find the promote control on
+             his own admin page, and a CPD on a phone at Bay Ho would have had
+             the same problem. Header on wide screens, per-select labels when the
+             row stacks. -->
+        <div class="mghead" aria-hidden="true">
+          <span>Person</span><span>Campus</span><span>Trainer</span><span>Role</span>
+        </div>
         <div class="topiclist" id="mgList"></div>
 
         <p class="eyebrow" style="margin-top:44px">Campus Production Directors</p>
@@ -6904,9 +6913,30 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-admin .reflcard .rq b{color:var(--white);font-weight:600}
 #p-admin .viewonly{font-family:var(--mono);font-size:10px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--faint);border:1px solid var(--line);padding:2px 7px;border-radius:2px}
+/* column headers for the Manage rows */
+#p-admin .mghead{display:grid;grid-template-columns:minmax(180px,2fr) 1fr 1fr auto;gap:14px;
+  padding:0 0 7px;margin-top:4px;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--faint)}
+#p-admin .mghead span:nth-child(2),
+#p-admin .mghead span:nth-child(3),
+#p-admin .mghead span:nth-child(4){min-width:140px}
+/* the per-select label only earns its space once the row stacks */
+#p-admin .mgrow .sl{display:none;font-family:var(--mono);font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+/* a save that looks like nothing is indistinguishable from a click that did
+   not register. Say so, then get out of the way. */
+.mgtoast{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:#7BE3B4;
+  opacity:0;transition:opacity .18s;margin-left:10px}
+.mgtoast.on{opacity:1}
+
 @media(max-width:820px){
   #p-admin .mgrow{grid-template-columns:1fr;gap:10px}
   #p-admin .mginput{min-width:0;width:100%}
+}
+@media(max-width:820px){
+  #p-admin .mghead{display:none}
+  #p-admin .mgrow .sl{display:block}
 }
 
 
