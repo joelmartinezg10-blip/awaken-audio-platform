@@ -493,11 +493,11 @@
 
   function nowActions(item, st) {
     if (item.is_marker) {
-      return '<div class="cpnow-act">' +
+      return '<div class="cpnow-act" data-now-id="' + esc(item.id) + '">' +
         '<button type="button" class="cpb cpb-next" data-next>Next phase</button></div>';
     }
     var hold = !!(item.blocks_run && st && st.state === "flagged");
-    return '<div class="cpnow-act">' +
+    return '<div class="cpnow-act" data-now-id="' + esc(item.id) + '">' +
       '<button type="button" class="cpb cpb-next"' + (hold ? " disabled" : "") + " data-next>" +
         (hold ? "Holding — Good or Skip to release" : "Good · Next") + "</button>" +
       '<div class="cpi-btns cpnow-fb">' +
@@ -734,9 +734,10 @@
 
       var act = e.target.closest("[data-act]");
       if (act) {
-        var card = act.closest(".cpitem") || act.closest(".cpnow");
-        var id = card && card.dataset.id;
+        var card = act.closest(".cpitem") || act.closest(".cpnow") || act.closest("[data-now-id]");
+        var id = card && (card.getAttribute("data-id") || card.getAttribute("data-now-id"));
         var item = id ? itemById(id) : null;
+        if (!item && S.phase === "line_check") item = focusItem();
         if (!item) return;
         applyAct(item, act.dataset.act, false);
         return;

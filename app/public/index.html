@@ -6183,7 +6183,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 
 /* Once a run is going the intro paragraph is just scrolling between the
    engineer and the checklist. */
-#p-companion.running .lead,#p-companion.running .eyebrow{display:none}
+#p-companion.running .lead,#p-companion.running .eyebrow,#p-companion.running .cpsignedout{display:none}
 #p-companion.running h1{font-size:26px;margin-bottom:0}
 #p-companion.linepass h1,#p-companion.linepass .cpsignedout{display:none}
 #p-companion.linepass .cphead{margin-top:10px}
@@ -6304,7 +6304,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
   box-shadow:0 0 0 4px rgba(255,90,54,.28);animation:cpheat 1.8s ease-out infinite}
 
 #p-companion .cpnow{position:relative;border:1px solid #2A2A32;border-left:4px solid var(--heat);
-  background:#0F0F13;border-radius:4px;padding:22px 18px 18px;min-height:42vh;
+  background:#0F0F13;border-radius:4px;padding:18px 16px 14px;min-height:0;
   display:flex;flex-direction:column;justify-content:center;overflow:hidden;
   touch-action:pan-y;-webkit-user-select:none;user-select:none;
   transition:transform .18s ease-out,box-shadow .12s,border-color .12s}
@@ -6337,7 +6337,8 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-companion .cppeek{font-family:var(--mono);font-size:12px;letter-spacing:.12em;
   text-transform:uppercase;color:#6A6A78;margin:12px 0 0}
 #p-companion .cppeek b{color:var(--white);font-weight:500}
-#p-companion .cpnow-act{margin-top:16px}
+#p-companion .cpnow-act{position:sticky;bottom:0;margin-top:14px;padding:12px 0 8px;z-index:5;
+  background:linear-gradient(180deg,rgba(9,9,11,0),var(--blackout) 14px,var(--blackout))}
 #p-companion .cpb-next{width:100%;min-height:64px;border-radius:3px;border:1px solid var(--heat);
   background:var(--heat);color:var(--blackout);font-family:var(--display);font-size:18px;
   letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
@@ -6362,7 +6363,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
   #p-companion .cpseats{grid-template-columns:1fr}
   #p-companion .cphead{align-items:flex-start}
   #p-companion .cpi-h b{font-size:17px}
-  #p-companion .cpnow{min-height:48vh;padding:20px 14px 16px}
+  #p-companion .cpnow{min-height:0;padding:16px 14px 12px}
   #p-companion .cpnow-name{font-size:clamp(36px,14vw,72px)}
   #p-companion .cpb-next{min-height:68px}
   #p-companion .cpcard .foot .btn{flex:1 1 140px}
