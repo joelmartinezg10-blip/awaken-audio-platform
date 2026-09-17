@@ -39,18 +39,12 @@ There is deliberately no way to become an admin from the browser.
     public/js/awaken-data.js   the only file that talks to Supabase
     public/js/awaken-app.js    auth screen, dashboards, route guards
     public/js/awaken-progress.js  bridges the training modules to the data layer
-    src/                       sources for the above
-    build.py                   rebuilds public/index.html from the training file
     supabase/migrations/       schema, security, views — run in order
     supabase/seed/             curriculum, first admin
     supabase/test/             local Postgres security suite (30 checks)
 
-To rebuild after the training platform changes:
-
-    python3 build.py
-
-The build fails loudly if any patch anchor stops matching, so a changed
-module can never silently lose its progress tracking.
+There is no build step. `app/public` is the source of truth and Vercel
+deploys it directly from `main`. Edit the files in `app/public` and push.
 
 ## Data model
 

@@ -52,14 +52,13 @@ Then the mobile sweep (must print `TOTAL VIEWS WITH OVERFLOW: 0`, run at
 decode. Shipping Opus-only is a silent failure: the site looks perfect
 and makes no sound.
 
-## Known state, 14 Sep 2026
+## Known state, 17 Sep 2026
 
-- `app/public` is the live site, recovered by download from production.
-- `src/` and `build.py` are from 3 Sep and are **behind** `app/public`.
-  Running `build.py` would overwrite the good site. See the header in
-  that file.
-- `_stale-build-2026-09-03/` is the old `public/` folder, kept for
-  reference only.
+- `app/public` is the source of truth and the live site. There is no
+  build step; Vercel deploys it directly from `main`.
+- The 3 Sep copies -- `src/`, `build.py` and `_stale-build-2026-09-03/` --
+  were retired on 17 Sep. They were behind `app/public` and could only
+  ever overwrite it. Recoverable from git history if ever needed.
 - `vercel.json` currently in production drops `cleanUrls` and the three
   security headers (`X-Content-Type-Options`, `Referrer-Policy`,
   `X-Frame-Options`) that the 3 Sep version had. Committed as-is so the
