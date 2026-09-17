@@ -3008,7 +3008,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
         each seat keeps its own position, so neither is waiting on the other.
       </p>
 
-      <p class="cpsignedout" data-auth="out">Sign in to start a run.</p>
+      <p class="cpsignedout" data-auth="out">Sign in to start a saved run. Or walk a preview pass first &mdash; nothing is written.</p>
 
       <div id="cpSetup" hidden>
         <div class="cpcard">
@@ -3025,9 +3025,10 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
           </div>
           <div class="foot">
             <button class="btn primary" type="button" id="cpStart">Start</button>
+            <button class="btn" type="button" data-preview>Walk a preview pass</button>
             <span class="cphint" id="cpHint"></span>
           </div>
-          <p class="cpfine">Starting again on the same date and seat picks up where you left off.</p>
+          <p class="cpfine">Starting again on the same date and seat picks up where you left off. A preview pass uses the same sequence and writes nothing.</p>
         </div>
       </div>
 
@@ -6184,6 +6185,10 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
    engineer and the checklist. */
 #p-companion.running .lead,#p-companion.running .eyebrow{display:none}
 #p-companion.running h1{font-size:26px;margin-bottom:0}
+#p-companion.linepass h1,#p-companion.linepass .cpsignedout{display:none}
+#p-companion.linepass .cphead{margin-top:10px}
+#p-companion .cpcard .foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+#p-companion .cpcard .foot .btn:disabled{opacity:.4;cursor:not-allowed}
 #p-companion .cphead{display:flex;align-items:center;justify-content:space-between;gap:14px;
   margin-top:26px;flex-wrap:wrap}
 #p-companion .cpmeta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
@@ -6198,6 +6203,8 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-companion .cpclock span{font-size:11px;color:var(--muted)}
 #p-companion .cpclock.near b{color:#F5A524}
 #p-companion .cpclock.over b{color:var(--bad,#E5484D)}
+#p-companion .cppreview-tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:#F5A524;border:1px solid rgba(245,165,36,.4);padding:4px 8px;border-radius:3px}
 
 #p-companion .cpphases{display:flex;gap:8px;overflow-x:auto;margin:18px 0 6px;padding-bottom:6px;
   -webkit-overflow-scrolling:touch}
@@ -6259,11 +6266,106 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-companion .cpsum{color:var(--muted);font-size:14px;margin:0 0 10px}
 #p-companion .cpdone .foot{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
 
+/* Line check as a live pass: one Now card, path ticks, a trail of
+   what already went by. Heat only on the current step. */
+#p-companion .cpass{margin-top:10px;max-width:100%}
+#p-companion .cptrail{display:flex;gap:6px;overflow-x:auto;max-width:100%;
+  padding:4px 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#p-companion .cptrail::-webkit-scrollbar{display:none}
+#p-companion .cptrail-i{flex:0 0 auto;min-height:36px;padding:0 10px;border-radius:3px;
+  border:1px solid #2E2E36;background:#0F0F13;color:#6A6A78;font-family:var(--mono);
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+#p-companion .cptrail-i.s-ok{color:#3ECF8E;border-color:rgba(62,207,142,.4)}
+#p-companion .cptrail-i.s-skipped{color:#6A6A78}
+#p-companion .cptrail-i.s-flagged{color:#FF8A8D;border-color:rgba(229,72,77,.45)}
+
+#p-companion .cppath{display:flex;align-items:center;gap:8px;margin:6px 0 16px;max-width:100%;
+  min-width:0}
+#p-companion .cppath-end{font-family:var(--mono);font-size:9px;letter-spacing:.12em;
+  text-transform:uppercase;color:#6A6A78;flex:0 0 auto}
+#p-companion .cppath-track{position:relative;flex:1;min-width:0;height:22px;
+  display:flex;align-items:center}
+#p-companion .cppath-fill{position:absolute;left:0;top:8px;height:6px;width:var(--p,0%);
+  background:var(--heat);border-radius:3px;pointer-events:none;z-index:0;
+  transition:width .35s ease-out}
+#p-companion .cppath-track::before{content:"";position:absolute;left:0;right:0;top:8px;height:6px;
+  background:#2E2E36;border-radius:3px;pointer-events:none}
+#p-companion .cppath-ticks{position:relative;z-index:1;display:flex;justify-content:space-between;
+  align-items:center;width:100%;gap:2px;min-width:0}
+#p-companion .cptick{-webkit-appearance:none;appearance:none;width:6px;height:6px;padding:0;
+  border-radius:50%;border:0;background:#3A3A44;cursor:pointer;flex:1 1 4px;
+  min-width:4px;max-width:8px;min-height:6px;box-sizing:border-box}
+#p-companion .cptick.done{background:#6A6A78}
+#p-companion .cptick.ok{background:#3ECF8E}
+#p-companion .cptick.flag{background:#E5484D}
+#p-companion .cptick.skipped{background:#4A4A54}
+#p-companion .cptick.now{flex:0 0 12px;width:12px;height:12px;max-width:12px;min-width:12px;
+  min-height:12px;background:var(--heat);
+  box-shadow:0 0 0 4px rgba(255,90,54,.28);animation:cpheat 1.8s ease-out infinite}
+
+#p-companion .cpnow{position:relative;border:1px solid #2A2A32;border-left:4px solid var(--heat);
+  background:#0F0F13;border-radius:4px;padding:22px 18px 18px;min-height:42vh;
+  display:flex;flex-direction:column;justify-content:center;overflow:hidden;
+  touch-action:pan-y;-webkit-user-select:none;user-select:none;
+  transition:transform .18s ease-out,box-shadow .12s,border-color .12s}
+#p-companion .cpnow.swiping{transition:none;touch-action:none}
+#p-companion .cpnow.s-ok{border-left-color:#3ECF8E}
+#p-companion .cpnow.s-skipped{border-left-color:#6A6A78}
+#p-companion .cpnow.s-flagged{border-left-color:#E5484D;background:rgba(229,72,77,.06)}
+#p-companion .cpnow.swipe-ok{box-shadow:inset 10px 0 0 #3ECF8E}
+#p-companion .cpnow.swipe-flag{box-shadow:inset -10px 0 0 #E5484D}
+#p-companion .cpnow-ghost{position:absolute;top:18px;font-family:var(--display);
+  font-size:28px;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity .12s}
+#p-companion .cpnow-ghost.ok{left:18px;color:#3ECF8E}
+#p-companion .cpnow-ghost.flag{right:18px;color:#FF8A8D}
+#p-companion .cpnow.swipe-ok .cpnow-ghost.ok,#p-companion .cpnow.swipe-flag .cpnow-ghost.flag{opacity:.9}
+#p-companion .cpnow-sub{font-family:var(--mono);font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+#p-companion .cpnow-seat{color:var(--heat)}
+#p-companion .cpnow-seat.mons{color:#9B86FF}
+#p-companion .cpnow-name{font-family:var(--display);font-weight:400;text-transform:uppercase;
+  font-size:clamp(40px,12vw,92px);line-height:.9;letter-spacing:-.03em;color:var(--white);
+  margin:0;max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+#p-companion .cpnow-d{color:#C9C4BC;font-size:16px;line-height:1.45;margin:14px 0 0;max-width:42ch}
+#p-companion .cpnow-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+#p-companion .cpnow-hint{display:flex;justify-content:space-between;align-items:center;
+  margin:22px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:#6A6A78}
+#p-companion .cpnow-hint b{color:var(--white);font-weight:500}
+#p-companion .cpnow .cpi-note{margin-top:14px;-webkit-user-select:text;user-select:text}
+#p-companion .cpnow textarea{-webkit-user-select:text;user-select:text}
+#p-companion .cppeek{font-family:var(--mono);font-size:12px;letter-spacing:.12em;
+  text-transform:uppercase;color:#6A6A78;margin:12px 0 0}
+#p-companion .cppeek b{color:var(--white);font-weight:500}
+#p-companion .cpnow-act{margin-top:16px}
+#p-companion .cpb-next{width:100%;min-height:64px;border-radius:3px;border:1px solid var(--heat);
+  background:var(--heat);color:var(--blackout);font-family:var(--display);font-size:18px;
+  letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+#p-companion .cpb-next:disabled{opacity:.45;cursor:not-allowed}
+#p-companion .cpnow-fb{grid-template-columns:1fr 1fr;margin-top:10px}
+#p-companion .cpnow-fbhint{font-family:var(--mono);font-size:11px;color:#6A6A78;margin:10px 0 0}
+#p-companion .cpflag-jump{background:none;border:0;padding:0;color:var(--white);cursor:pointer;
+  font:inherit;text-align:left}
+#p-companion .cpflag-jump:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+@keyframes cpheat{
+  0%,100%{box-shadow:0 0 0 3px rgba(255,90,54,.28)}
+  50%{box-shadow:0 0 0 7px rgba(255,90,54,0)}
+}
+@media(prefers-reduced-motion:reduce){
+  #p-companion .cptick.now{animation:none}
+  #p-companion .cppath-fill,#p-companion .cpnow{transition:none}
+}
+
 @media(max-width:640px){
   #p-companion .cpwhen{grid-template-columns:1fr}
   #p-companion .cpseats{grid-template-columns:1fr}
   #p-companion .cphead{align-items:flex-start}
   #p-companion .cpi-h b{font-size:17px}
+  #p-companion .cpnow{min-height:48vh;padding:20px 14px 16px}
+  #p-companion .cpnow-name{font-size:clamp(36px,14vw,72px)}
+  #p-companion .cpb-next{min-height:68px}
+  #p-companion .cpcard .foot .btn{flex:1 1 140px}
 }
 
 /* ---------- the Frenzy curve ---------- */
@@ -15065,7 +15167,7 @@ showView=function(v){
 <script src="/js/awaken-bells.js"></script>
 <script src="/js/awaken-manage.js"></script>
 <script src="/js/awaken-profile.js"></script>
-<script src="/js/awaken-companion.js?v=1"></script>
+<script src="/js/awaken-companion.js?v=2"></script>
 <script src="/js/iem.js"></script>
 
 </body>
