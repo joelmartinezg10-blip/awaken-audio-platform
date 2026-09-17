@@ -1745,7 +1745,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
            your name and everything about you behind it. Sign out is reachable
            from every page now, which is the bug that started this. -->
       <a href="#/login" class="nav-login" data-auth="out" data-g="login">Log in</a>
-      <span class="acct" data-auth="in" hidden><button class="avbtn" id="acctBtn" aria-haspopup="menu" aria-expanded="false"><span class="av" id="acctAv"><i>&#183;&#183;</i></span><span class="who"><b class="nm" id="acctName"></b><span class="rolechip" id="acctRole" hidden></span></span><i class="cv"></i></button><div class="acctmenu" id="acctMenu" role="menu" hidden><div class="amhead"><span class="av lg" id="acctAvBig"><i>&#183;&#183;</i></span><span><b id="amName">&mdash;</b><small id="amMeta">&mdash;</small></span></div><a role="menuitem" href="#/profile">My profile</a><a role="menuitem" href="#/dashboard">My progress</a><a role="menuitem" href="#/reflections">My reflections</a><a role="menuitem" href="#/admin" data-auth="admin" hidden>Admin</a><button role="menuitem" id="signOutBtn">Sign out</button></div></span>
+      <span class="acct" data-auth="in" hidden><button class="avbtn" id="acctBtn" aria-haspopup="menu" aria-expanded="false"><span class="av" id="acctAv"><i>&#183;&#183;</i></span><span class="who"><b class="nm" id="acctName"></b><span class="rolechip" id="acctRole" hidden></span></span><i class="cv"></i></button><div class="acctmenu" id="acctMenu" role="menu" hidden><div class="amhead"><span class="av lg" id="acctAvBig"><i>&#183;&#183;</i></span><span><b id="amName">&mdash;</b><small id="amMeta">&mdash;</small></span></div><a role="menuitem" href="#/profile">My profile</a><a role="menuitem" href="#/dashboard">My progress</a><a role="menuitem" href="#/companion">Service Companion</a><a role="menuitem" href="#/reflections">My reflections</a><a role="menuitem" href="#/admin" data-auth="admin" hidden>Admin</a><button role="menuitem" id="signOutBtn">Sign out</button></div></span>
     </nav>
   </div>
   <div class="subnav" id="subnav" hidden><div class="subnav-in"></div></div>
@@ -2981,6 +2981,54 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 
       <p class="eyebrow" style="margin-top:44px">Everything you have written</p>
       <div class="rfjournal" id="rfJournal"></div>
+    </div>
+  </section>
+</div>
+
+<!-- ================= SERVICE COMPANION ================= -->
+<div class="page" id="p-companion" hidden>
+  <section class="band" style="border-bottom:0">
+    <div class="wrap">
+      <p class="eyebrow">Your account</p>
+      <h1>Service Companion</h1>
+      <p class="lead" style="margin-top:18px;max-width:64ch">
+        The line check and soundcheck, in order, on the device in your pocket.
+        Monitors calls the room and Front of House shadows the same channel &mdash;
+        each seat keeps its own position, so neither is waiting on the other.
+      </p>
+
+      <p class="cpsignedout" data-auth="out">Sign in to start a run.</p>
+
+      <div id="cpSetup" hidden>
+        <div class="cpcard">
+          <h3>Start a run</h3>
+          <label class="cplab">Which seat</label>
+          <div class="cpseats">
+            <button type="button" class="cpseatbtn foh"  data-seat="foh"  aria-pressed="true">Front of House</button>
+            <button type="button" class="cpseatbtn mons" data-seat="mons" aria-pressed="false">Monitors</button>
+          </div>
+          <div class="cpwhen">
+            <label>Service date <input type="date" id="cpDate"></label>
+            <label>Which service <span class="opt">optional</span>
+              <input type="text" id="cpLabel" maxlength="80" placeholder="Wednesday 6:30, Sunday 9am"></label>
+          </div>
+          <div class="foot">
+            <button class="btn primary" type="button" id="cpStart">Start</button>
+            <span class="cphint" id="cpHint"></span>
+          </div>
+          <p class="cpfine">Starting again on the same date and seat picks up where you left off.</p>
+        </div>
+      </div>
+
+      <div id="cpRun" hidden>
+        <div class="cphead">
+          <div class="cpmeta" id="cpMeta"></div>
+          <div class="cpclock" id="cpClock" hidden></div>
+        </div>
+        <div class="cpphases" id="cpPhases"></div>
+        <div id="cpBody"></div>
+        <p class="cpfine"><span class="cphint" id="cpHint2"></span></p>
+      </div>
     </div>
   </section>
 </div>
@@ -5090,6 +5138,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     '/dashboard':{el:'p-dashboard',accent:'#FF5A36', g:'me'},
     '/courses': {el:'p-courses', accent:'#FF5A36', g:'me'},
     '/reflections':{el:'p-reflections',accent:'#FF5A36', g:'me'},
+    '/companion':{el:'p-companion',accent:'#FF5A36', g:'me'},
     '/admin':   {el:'p-admin',   accent:'#7657FF', g:'me'},
     '/profile': {el:'p-profile', accent:'#FF5A36', g:'me'},
     '/iem':     {el:'p-iem',     accent:'#7657FF', g:'training'},
@@ -5099,7 +5148,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     program:  [['/program','Program Overview'],['/ear','Critical Listening'],['/proc','Processing']],
     seats:    [['/foh','Front of House'],['/mons','Monitors']],
     training: [['/arcade','Arcade'],['/iem','IEM Mix Room']],
-    me:       [['/profile','My Profile'],['/dashboard','My Progress'],['/reflections','Reflections'],['/courses','Courses'],['/admin','Admin']]
+    me:       [['/profile','My Profile'],['/dashboard','My Progress'],['/companion','Service Companion'],['/reflections','Reflections'],['/courses','Courses'],['/admin','Admin']]
   };
   function soft(hex){
     var r=parseInt(hex.substr(1,2),16),g=parseInt(hex.substr(3,2),16),b=parseInt(hex.substr(5,2),16);
@@ -6094,6 +6143,118 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-arcade .fzone.off{background:#0D0D11;opacity:.4}
 #p-arcade .fzone:disabled{cursor:default}
 #p-arcade .fzone.armed:not(:disabled){cursor:pointer}
+/* ---------- Service Companion ---------- */
+/* Phone first, dark room, one hand, standing up. Targets are 48px because
+   the alternative is a volunteer missing a button at 5:12 with a band
+   waiting. Nothing here depends on hover; hover does not exist at a
+   console. */
+#p-companion .cpsignedout{color:var(--muted);margin-top:26px}
+#p-companion .cpcard{background:var(--panel,#17171C);border:1px solid #26262C;border-radius:4px;
+  padding:20px;margin-top:26px;max-width:640px}
+#p-companion .cpcard h3{margin:0 0 14px;font-size:18px}
+#p-companion .cplab{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+#p-companion .cpseats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+#p-companion .cpseatbtn{min-height:56px;border-radius:3px;border:1px solid #2E2E36;background:#0F0F13;
+  color:var(--muted);font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;
+  cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+#p-companion .cpseatbtn.foh[aria-pressed="true"]{background:rgba(255,90,54,.16);border-color:#FF5A36;color:#FF5A36}
+#p-companion .cpseatbtn.mons[aria-pressed="true"]{background:rgba(118,87,255,.16);border-color:#7657FF;color:#9B86FF}
+#p-companion .cpwhen{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+#p-companion .cpwhen label{display:block;font-size:12px;color:var(--muted)}
+#p-companion .cpwhen input{width:100%;margin-top:6px;min-height:46px;background:#0F0F13;color:var(--white);
+  border:1px solid #2E2E36;border-radius:3px;padding:0 12px;font-size:15px}
+#p-companion .cpwhen .opt{color:#6A6A78}
+#p-companion .cpfine{color:#6A6A78;font-size:12px;margin-top:14px}
+#p-companion .cphint{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:12px}
+#p-companion .cphint.bad{color:var(--bad,#E5484D)}
+
+/* Once a run is going the intro paragraph is just scrolling between the
+   engineer and the checklist. */
+#p-companion.running .lead,#p-companion.running .eyebrow{display:none}
+#p-companion.running h1{font-size:26px;margin-bottom:0}
+#p-companion .cphead{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin-top:26px;flex-wrap:wrap}
+#p-companion .cpmeta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
+#p-companion .cpmeta b{color:var(--white)}
+#p-companion .cpmeta span{color:var(--muted)}
+#p-companion .cpseat{font-family:var(--mono);font-size:11px;letter-spacing:.14em;padding:5px 9px;
+  border-radius:3px;border:1px solid}
+#p-companion .cpseat.foh{color:#FF5A36;border-color:rgba(255,90,54,.5);background:rgba(255,90,54,.1)}
+#p-companion .cpseat.mons{color:#9B86FF;border-color:rgba(118,87,255,.5);background:rgba(118,87,255,.1)}
+#p-companion .cpclock{font-family:var(--mono);text-align:right;line-height:1.2}
+#p-companion .cpclock b{display:block;font-size:26px;color:var(--white)}
+#p-companion .cpclock span{font-size:11px;color:var(--muted)}
+#p-companion .cpclock.near b{color:#F5A524}
+#p-companion .cpclock.over b{color:var(--bad,#E5484D)}
+
+#p-companion .cpphases{display:flex;gap:8px;overflow-x:auto;margin:18px 0 6px;padding-bottom:6px;
+  -webkit-overflow-scrolling:touch}
+#p-companion .cpph{flex:0 0 auto;min-height:44px;padding:0 14px;border-radius:3px;border:1px solid #2E2E36;
+  background:#0F0F13;color:var(--muted);font-family:var(--mono);font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;cursor:pointer;white-space:nowrap}
+#p-companion .cpph.on{border-color:var(--accent);color:var(--white);background:rgba(255,90,54,.12)}
+#p-companion .cpph i{font-style:normal;margin-left:8px;color:#6A6A78}
+
+#p-companion .cpblock{border:1px solid rgba(229,72,77,.5);background:rgba(229,72,77,.1);border-radius:3px;
+  padding:12px 14px;margin:14px 0}
+#p-companion .cpblock b{display:block;color:#FF8A8D;font-size:14px;margin-bottom:4px}
+#p-companion .cpblock span{color:var(--muted);font-size:13px}
+
+#p-companion .cplist{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+#p-companion .cpitem{border:1px solid #26262C;border-left:3px solid #2E2E36;background:#0F0F13;
+  border-radius:3px;padding:14px}
+#p-companion .cpitem.s-ok{border-left-color:#3ECF8E;background:rgba(62,207,142,.05)}
+#p-companion .cpitem.s-skipped{border-left-color:#6A6A78;opacity:.65}
+#p-companion .cpitem.s-flagged{border-left-color:#E5484D;background:rgba(229,72,77,.06)}
+#p-companion .cpi-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+#p-companion .cpi-h b{font-size:16px;color:var(--white);font-weight:600}
+#p-companion .cpcode{font-family:var(--mono);font-size:11px;color:#6A6A78;flex:0 0 auto}
+#p-companion .cptag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  padding:2px 6px;border-radius:2px}
+#p-companion .cptag.crit{color:#F5A524;background:rgba(245,165,36,.12)}
+#p-companion .cptag.block{color:#FF8A8D;background:rgba(229,72,77,.14)}
+#p-companion .cptag.opt{color:#6A6A78;background:#17171C}
+#p-companion .cpi-d{color:var(--muted);font-size:13.5px;line-height:1.5;margin:8px 0 0}
+#p-companion .cpi-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+/* 16 Sep 2026: these were .ok/.skip/.flag. The global accessibility
+   skip-link is .skip{position:absolute;top:-40px} - it caught the Skip
+   button, lifted it out of the grid and parked it on top of Good.
+   Prefixed names, and a reset so no other global can do it again. */
+#p-companion .cpi-btns .cpb{position:static;top:auto;left:auto;width:auto}
+#p-companion .cpb{min-height:48px;border-radius:3px;border:1px solid #3A3A44;background:#1A1A20;
+  color:#C9C9D2;font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  cursor:pointer}
+#p-companion .cpitem.s-ok .cpb-ok{background:rgba(62,207,142,.18);border-color:#3ECF8E;color:#3ECF8E}
+#p-companion .cpitem.s-skipped .cpb-skip{background:#1C1C22;border-color:#6A6A78;color:var(--white)}
+#p-companion .cpitem.s-flagged .cpb-flag{background:rgba(229,72,77,.18);border-color:#E5484D;color:#FF8A8D}
+#p-companion .cpi-note{margin-top:10px}
+#p-companion .cpi-note textarea,#p-companion .cpmark textarea{width:100%;background:#141418;
+  border:1px solid #2E2E36;border-radius:3px;color:var(--white);padding:10px 12px;font-size:15px;
+  font-family:inherit;line-height:1.5;resize:vertical}
+
+#p-companion .cpmark{border:1px dashed #2E2E36;border-radius:3px;padding:16px;margin-top:10px;background:#0D0D11}
+#p-companion .cpmark h4{margin:0 0 6px;font-size:15px;color:var(--white)}
+#p-companion .cpmark p{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 10px}
+#p-companion .cpflags{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:7px}
+#p-companion .cpflags li{font-size:14px;color:var(--white);border-left:2px solid #E5484D;padding-left:10px}
+#p-companion .cpflags i{color:var(--muted);font-style:normal;display:block;font-size:13px;margin-top:2px}
+#p-companion .cpnone{color:#3ECF8E}
+
+#p-companion .cpnav{display:flex;justify-content:space-between;gap:12px;margin-top:20px}
+#p-companion .cpnav .btn{min-height:50px}
+#p-companion .cpdone{border:1px solid #26262C;background:#0F0F13;border-radius:4px;padding:22px;margin-top:16px}
+#p-companion .cpdone h3{margin:0 0 12px}
+#p-companion .cpsum{color:var(--muted);font-size:14px;margin:0 0 10px}
+#p-companion .cpdone .foot{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+
+@media(max-width:640px){
+  #p-companion .cpwhen{grid-template-columns:1fr}
+  #p-companion .cpseats{grid-template-columns:1fr}
+  #p-companion .cphead{align-items:flex-start}
+  #p-companion .cpi-h b{font-size:17px}
+}
+
 /* ---------- the Frenzy curve ---------- */
 /* One line. Near-flat at rest with a scallop over each band, bending
    into a bell where you point. It never shows the live EQ - that would
@@ -14893,6 +15054,7 @@ showView=function(v){
 <script src="/js/awaken-bells.js"></script>
 <script src="/js/awaken-manage.js"></script>
 <script src="/js/awaken-profile.js"></script>
+<script src="/js/awaken-companion.js?v=1"></script>
 <script src="/js/iem.js"></script>
 
 </body>
