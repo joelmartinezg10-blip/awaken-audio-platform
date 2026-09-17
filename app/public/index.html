@@ -4747,7 +4747,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
           <button class="btn" id="frenzyHint" disabled>ELIMINATE <b class="num" id="fzHintLeft">3</b></button>
         </div>
         <div class="fwrap">
-          <div class="fstrip" id="sprintSpec" data-bells="heat"></div>
+          <div class="fstrip" id="sprintSpec" data-bells="heat" data-steps="on" data-glow="on" data-scan="on"></div>
           <div class="freadout" id="freadout"><span class="hz"></span><span class="nm"></span></div>
           <div class="ticks" id="sprintTicks"></div>
         </div>
@@ -6094,30 +6094,33 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-arcade .fzone.off{background:#0D0D11;opacity:.4}
 #p-arcade .fzone:disabled{cursor:default}
 #p-arcade .fzone.armed:not(:disabled){cursor:pointer}
-/* ---------- EQ bells under the Frenzy board ---------- */
-/* Decoration and affordance only. These never show the live EQ - drawing
-   the real boost would hand over the answer. */
+/* ---------- the Frenzy curve ---------- */
+/* One line. Near-flat at rest with a scallop over each band, bending
+   into a bell where you point. It never shows the live EQ - that would
+   hand over the answer. */
 #p-arcade .fstrip{position:relative}
-#p-arcade .fbells{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+#p-arcade .fbells{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;
+  --cglow:#FF5A36}
 #p-arcade .fzone{z-index:1}
-#p-arcade .bell{opacity:.52;transition:opacity .16s}
-#p-arcade .bell .bline{stroke-width:1.6}
-#p-arcade .bell .bnode{opacity:0;transition:opacity .16s}
-#p-arcade .bell.hot{opacity:1}
-#p-arcade .bell.hot .bline{stroke-width:2}
-#p-arcade .bell.hot .bnode{opacity:1}
-#p-arcade .bell.off,#p-arcade .bell.elim{opacity:.07}
-#p-arcade .bell.correct{opacity:1}
-#p-arcade .bell.correct .bline{stroke:#3ECF8E;stroke-width:2.4}
-#p-arcade .bell.correct .bfill{fill:rgba(62,207,142,.22)}
-#p-arcade .bell.correct .bnode{opacity:1;fill:#3ECF8E}
-#p-arcade .bell.wrong{opacity:1}
-#p-arcade .bell.wrong .bline{stroke:#E5484D;stroke-width:2}
-#p-arcade .bell.wrong .bfill{fill:rgba(229,72,77,.18)}
-/* on a phone nine filled bells is mush - keep the line, drop the wash */
+#p-arcade .cline{stroke-width:2;stroke-linejoin:miter;stroke-linecap:butt}
+#p-arcade .cfill{opacity:.13}
+/* phosphor. A vector monitor bleeds light into the glass around the
+   trace; that bloom is most of what separates retro from clinical. */
+#p-arcade .fstrip[data-glow="on"] .cline{
+  filter:drop-shadow(0 0 3px var(--cglow)) drop-shadow(0 0 9px var(--cglow))}
+#p-arcade .fstrip[data-glow="on"] .cfill{opacity:.17}
+/* scanlines, over the curve but under the buttons */
+#p-arcade .fstrip[data-scan="on"]::before{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(180deg,
+    rgba(0,0,0,.34) 0 1px, rgba(0,0,0,0) 1px 3px);
+  mix-blend-mode:multiply}
+@media(prefers-reduced-motion:reduce){
+  #p-arcade .fstrip[data-scan="on"]::before{opacity:.5}
+}
 @media(max-width:640px){
-  #p-arcade .bell .bfill{opacity:.35}
-  #p-arcade .bell{opacity:.5}
+  #p-arcade .cline{stroke-width:1.6}
+  #p-arcade .fstrip[data-glow="on"] .cline{filter:drop-shadow(0 0 4px var(--cglow))}
 }
 #p-arcade .ticks{position:relative;height:38px;margin-top:2px}
 #p-arcade .ticks span{position:absolute;transform:translateX(-50%);font-family:var(--mono);font-size:10px;

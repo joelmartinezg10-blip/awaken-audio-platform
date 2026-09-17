@@ -1,180 +1,221 @@
 /* ============================================================
- * Awaken Audio — EQ bells under the Frequency Frenzy board
+ * Awaken Audio — the Frequency Frenzy curve
  *
- * The board is nine clickable answer zones. It was nine flat
- * rectangles, which is honest but reads as a bar chart rather than as
- * an equaliser. This draws a bell over each zone so the board looks
- * like the thing it is teaching.
+ * The board is nine clickable answer zones. It was nine flat blocks,
+ * which reads as a bar chart when the thing being taught is an
+ * equaliser.
  *
- * PURELY ADDITIVE. It does not touch the game: the zones keep their
- * geometry, their handlers and their hit areas, and the bells are an
- * SVG overlay with pointer-events:none. State is mirrored out of the
- * zones with a MutationObserver rather than by editing answer() - so
- * if anything here throws, the cabinet still plays exactly as it does
- * today. Geometry is read from the live buttons, so it needs to know
- * nothing about BANDS, EDGES or the frequency maths.
+ * ONE CURVE, NOT NINE BELLS. At rest it is a near-flat line with a
+ * gentle scallop over each band - an EQ sitting at unity, with the nine
+ * positions still legible. Point at a band and the line bends up into a
+ * bell there, in that band's colour. Nine permanent bells implied nine
+ * permanent boosts, which is not what the drill is doing.
  *
- * IMPORTANT: the bells never show the live EQ. Drawing the actual
- * boost would hand over the answer. They are a resting decoration, a
- * hover preview, and an after-the-fact reveal - never a readout.
+ * Why not flat-with-nothing at rest: hover does not exist on a phone.
+ * A dead flat line would leave a touch visitor an empty box with no
+ * sign the board is divided at all. The scallop is what keeps it
+ * discoverable without lying.
  *
- * TO REMOVE: delete the <script src="/js/awaken-bells.js"> tag. The
- * board returns to flat zones. ?bells=off does it for one visit.
+ * RETRO comes from two things, both switchable on #sprintSpec:
+ *   data-steps="on|off"  quantise the curve into columns, the way a
+ *                        1980s rack analyser drew one. Smooth splines
+ *                        are what make a display read as a plugin.
+ *   data-glow="on|off"   phosphor bloom around the stroke, like a
+ *                        vector monitor.
+ *   data-scan="on|off"   CRT scanlines across the board.
+ *   data-bells="heat|spectrum"   colour ramp.
+ *
+ * THE CURVE NEVER SHOWS THE LIVE EQ. Drawing the real boost would hand
+ * over the answer. It shows what you are POINTING at, and afterwards
+ * what the answer WAS - never what is playing.
+ *
+ * PURELY ADDITIVE: the zones keep their geometry, handlers and hit
+ * areas; hover listeners are added rather than replaced; answer state is
+ * mirrored out with a MutationObserver rather than by editing the game.
+ * Wrapped in try/catch - if this throws, the cabinet still plays.
+ * Remove by deleting the script tag; ?bells=off for one visit.
  * ============================================================ */
 (function (global) {
   "use strict";
 
   var NS = "http://www.w3.org/2000/svg";
-  var H  = 210;                       /* matches .fstrip height */
+  var H = 210, BASE = H - 8, PEAK = H * 0.60, COLS = 84;
+  /* How tall the resting scallop sits. On a device that can hover, it only
+     has to hint that the board is divided - the hover bell does the real
+     explaining. On a touch device there IS no hover, so the resting state
+     is everything a volunteer gets until they tap, and it has to carry the
+     whole job of showing nine bands. */
+  function restHeight() {
+    try {
+      if (global.matchMedia && global.matchMedia("(hover: none)").matches) return 20;
+    } catch (e) {}
+    return 8;
+  }
+  var REST = restHeight();
 
-  function off() {
+  function offSwitch() {
     try { return /[?&]bells=off\b/.test(global.location.search || ""); }
     catch (e) { return false; }
   }
-
-  /* Two ramps. "heat" keeps the site's own accents - red through
-     magenta to violet, no green or cyan, which is what stops it
-     reading as a stock plugin. "spectrum" is the familiar EQ rainbow. */
+  function opt(strip, name, dflt) {
+    var v = strip.dataset[name];
+    return v === undefined ? dflt : v;
+  }
   function hue(i, n, ramp) {
     var t = n > 1 ? i / (n - 1) : 0;
-    if (ramp === "spectrum") return 8 + t * 262;         /* red -> violet the long way */
-    return 12 - t * 121;                                 /* red -> magenta -> violet */
-  }
-
-  function bell(cx, halfW, peak, w) {
-    /* a gaussian, sampled - smoother than a quadratic and it decays to
-       the baseline instead of stopping dead at the band edge */
-    var sigma = halfW * 0.62, pts = [], x, y;
-    for (var k = 0; k <= 48; k++) {
-      x = cx - halfW * 2.6 + (halfW * 5.2 * k) / 48;
-      y = H - 6 - peak * Math.exp(-((x - cx) * (x - cx)) / (2 * sigma * sigma));
-      pts.push((Math.max(-40, Math.min(w + 40, x))).toFixed(1) + "," + y.toFixed(1));
-    }
-    return pts;
-  }
-
-  function build(strip) {
-    var zones = Array.prototype.slice.call(strip.querySelectorAll(".fzone"));
-    if (zones.length < 2) return null;
-
-    var w = strip.clientWidth || 1000;
-    var svg = strip.querySelector(".fbells");
-    if (!svg) {
-      svg = document.createElementNS(NS, "svg");
-      svg.setAttribute("class", "fbells");
-      svg.setAttribute("aria-hidden", "true");
-      svg.setAttribute("preserveAspectRatio", "none");
-      strip.insertBefore(svg, strip.firstChild);
-    }
-    svg.setAttribute("viewBox", "0 0 " + w + " " + H);
-    while (svg.firstChild) svg.removeChild(svg.firstChild);
-
-    var ramp = strip.dataset.bells || "heat";
-    var defs = document.createElementNS(NS, "defs");
-    svg.appendChild(defs);
-
-    zones.forEach(function (z, i) {
-      var cx = z.offsetLeft + z.offsetWidth / 2;
-      var hw = z.offsetWidth / 2;
-      var h  = hue(i, zones.length, ramp);
-      var col = "hsl(" + h.toFixed(1) + ",92%,62%)";
-
-      var g = document.createElementNS(NS, "linearGradient");
-      g.setAttribute("id", "bellg" + i);
-      g.setAttribute("x1", "0"); g.setAttribute("y1", "0");
-      g.setAttribute("x2", "0"); g.setAttribute("y2", "1");
-      g.innerHTML =
-        '<stop offset="0" stop-color="' + col + '" stop-opacity=".78"/>' +
-        '<stop offset=".55" stop-color="' + col + '" stop-opacity=".22"/>' +
-        '<stop offset="1" stop-color="' + col + '" stop-opacity="0"/>';
-      defs.appendChild(g);
-
-      var pts = bell(cx, hw, H * 0.62, w);
-      var fill = document.createElementNS(NS, "path");
-      fill.setAttribute("class", "bfill");
-      fill.setAttribute("d", "M" + pts[0].split(",")[0] + "," + (H - 6) +
-                             " L" + pts.join(" L") +
-                             " L" + pts[pts.length - 1].split(",")[0] + "," + (H - 6) + " Z");
-      fill.setAttribute("fill", "url(#bellg" + i + ")");
-
-      var line = document.createElementNS(NS, "polyline");
-      line.setAttribute("class", "bline");
-      line.setAttribute("points", pts.join(" "));
-      line.setAttribute("fill", "none");
-      line.setAttribute("stroke", col);
-      line.setAttribute("vector-effect", "non-scaling-stroke");
-
-      var node = document.createElementNS(NS, "circle");
-      node.setAttribute("class", "bnode");
-      node.setAttribute("cx", cx); node.setAttribute("cy", H - 6 - H * 0.62);
-      node.setAttribute("r", 3.2); node.setAttribute("fill", col);
-
-      var grp = document.createElementNS(NS, "g");
-      grp.setAttribute("class", "bell");
-      grp.dataset.i = i;
-      grp.appendChild(fill); grp.appendChild(line); grp.appendChild(node);
-      svg.appendChild(grp);
-    });
-    return svg;
+    return ramp === "spectrum" ? 8 + t * 262 : 12 - t * 121;
   }
 
   function wire(strip) {
-    if (strip.__bells) return;
-    strip.__bells = true;
-    var svg = build(strip);
-    if (!svg) return;
+    if (strip.__curve) return;
+    strip.__curve = true;
 
     var zones = Array.prototype.slice.call(strip.querySelectorAll(".fzone"));
-    function bells() { return strip.querySelectorAll(".bell"); }
-    function at(i) { return strip.querySelector('.bell[data-i="' + i + '"]'); }
+    if (zones.length < 2) return;
 
-    /* hover and focus are added, never replaced - the game's own
-       handlers on these buttons keep running untouched */
-    zones.forEach(function (z, i) {
-      z.addEventListener("mouseenter", function () { mark(i, "hot", true); });
-      z.addEventListener("mouseleave", function () { mark(i, "hot", false); });
-      z.addEventListener("focus",      function () { mark(i, "hot", true); });
-      z.addEventListener("blur",       function () { mark(i, "hot", false); });
-    });
-    function mark(i, cls, on) {
-      var b = at(i); if (b) b.classList.toggle(cls, !!on);
+    var svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "fbells");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("preserveAspectRatio", "none");
+    var fill = document.createElementNS(NS, "path");
+    fill.setAttribute("class", "cfill");
+    var line = document.createElementNS(NS, "path");
+    line.setAttribute("class", "cline");
+    line.setAttribute("fill", "none");
+    line.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.appendChild(fill); svg.appendChild(line);
+    strip.insertBefore(svg, strip.firstChild);
+
+    var W = 1000, centres = [], halves = [], measured = false;
+    function measure() {
+      /* This runs first while the cabinet is still hidden, where every
+         zone reports offsetLeft 0 and width 0 - which drew the whole
+         scallop stacked at x=0. Refuse to measure a board that has no
+         width yet, and let the ResizeObserver below come back to it. */
+      var w = strip.clientWidth;
+      if (!w || !zones[zones.length - 1].offsetWidth) return false;
+      REST = restHeight();
+      W = w;
+      svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      centres = zones.map(function (z) { return z.offsetLeft + z.offsetWidth / 2; });
+      halves  = zones.map(function (z) { return Math.max(18, z.offsetWidth / 2); });
+      measured = true;
+      return true;
+    }
+    measure();
+
+    /* what the curve is currently saying */
+    var active = -1, mode = "", amp = 0, shown = 0, raf = null;
+
+    function y(x) {
+      /* the resting scallop: every band, always, but barely */
+      var v = 0, i, s;
+      for (i = 0; i < centres.length; i++) {
+        s = halves[i] * 0.66;
+        v += REST * Math.exp(-((x - centres[i]) * (x - centres[i])) / (2 * s * s));
+      }
+      if (active >= 0 && shown > 0.001) {
+        s = halves[active] * 0.62;
+        v += PEAK * shown *
+             Math.exp(-((x - centres[active]) * (x - centres[active])) / (2 * s * s));
+      }
+      return BASE - v;
     }
 
-    /* the game writes correct/wrong/elim/off onto the zones; mirror them */
-    var STATES = ["correct", "wrong", "elim", "off", "armed"];
+    function draw() {
+      if (!measured && !measure()) return;
+      var stepped = opt(strip, "steps", "on") !== "off";
+      var d = "", i, x, yy, w = W / COLS;
+      if (stepped) {
+        /* one flat-topped column per slot: a segmented display, not a spline */
+        for (i = 0; i <= COLS; i++) {
+          x = i * w;
+          yy = y(x + w / 2);
+          d += (i === 0 ? "M" + x.toFixed(1) + "," + yy.toFixed(1)
+                        : "L" + x.toFixed(1) + "," + yy.toFixed(1));
+          d += "L" + Math.min(W, x + w).toFixed(1) + "," + yy.toFixed(1);
+        }
+      } else {
+        for (i = 0; i <= COLS; i++) {
+          x = (i * W) / COLS;
+          d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y(x).toFixed(1);
+        }
+      }
+      line.setAttribute("d", d);
+      fill.setAttribute("d", d + "L" + W + "," + BASE + "L0," + BASE + " Z");
+    }
+
+    function paint() {
+      var ramp = opt(strip, "bells", "heat");
+      var col = mode === "correct" ? "#3ECF8E"
+              : mode === "wrong"   ? "#E5484D"
+              : active >= 0 ? "hsl(" + hue(active, zones.length, ramp).toFixed(1) + ",92%,62%)"
+              : "hsl(12,92%,58%)";
+      line.setAttribute("stroke", col);
+      fill.setAttribute("fill", col);
+      svg.style.setProperty("--cglow", col);
+    }
+
+    /* the bend is animated rather than snapped: a filter sweeping in
+       reads as a machine responding, which a hard cut does not */
+    function run() {
+      var target = active >= 0 ? amp : 0;
+      shown += (target - shown) * 0.22;
+      if (Math.abs(target - shown) < 0.002) { shown = target; draw(); raf = null; return; }
+      draw();
+      raf = global.requestAnimationFrame(run);
+    }
+    function nudge() { if (!raf) raf = global.requestAnimationFrame(run); }
+
+    function set(i, m, a) {
+      active = i; mode = m || ""; amp = a === undefined ? 1 : a;
+      paint(); nudge();
+    }
+
+    zones.forEach(function (z, i) {
+      z.addEventListener("mouseenter", function () { if (!locked()) set(i, "", 1); });
+      z.addEventListener("focus",      function () { if (!locked()) set(i, "", 1); });
+      z.addEventListener("mouseleave", function () { if (!locked() && active === i) set(-1); });
+      z.addEventListener("blur",       function () { if (!locked() && active === i) set(-1); });
+    });
+    function locked() { return mode === "correct" || mode === "wrong"; }
+
+    /* the game writes correct / wrong onto a zone; follow it, hold the
+       reveal, and let go when the classes clear for the next round */
     var obs = new MutationObserver(function (recs) {
       recs.forEach(function (r) {
         var i = zones.indexOf(r.target);
         if (i < 0) return;
-        var b = at(i); if (!b) return;
-        STATES.forEach(function (c) { b.classList.toggle(c, r.target.classList.contains(c)); });
+        if (r.target.classList.contains("correct")) return set(i, "correct", 1);
+        if (r.target.classList.contains("wrong"))   return set(i, "wrong", 1);
+        if (locked() && active === i) set(-1);
       });
     });
-    zones.forEach(function (z) { obs.observe(z, { attributes: true, attributeFilter: ["class"] }); });
+    zones.forEach(function (z) {
+      obs.observe(z, { attributes: true, attributeFilter: ["class"] });
+    });
 
     var t = null;
     global.addEventListener("resize", function () {
       clearTimeout(t);
-      t = setTimeout(function () { build(strip); wireRedraw(strip, zones); }, 160);
+      t = setTimeout(function () { if (measure()) draw(); }, 150);
     });
-  }
+    /* the board is laid out the moment the cabinet is opened, long after
+       this file runs - that is the event worth listening for */
+    if (global.ResizeObserver) {
+      new ResizeObserver(function () {
+        if (measure()) draw();
+      }).observe(strip);
+    }
 
-  /* a rebuild throws the nodes away, so the mirrored state goes back on */
-  function wireRedraw(strip, zones) {
-    zones.forEach(function (z, i) {
-      var b = strip.querySelector('.bell[data-i="' + i + '"]');
-      if (!b) return;
-      ["correct", "wrong", "elim", "off", "armed"].forEach(function (c) {
-        b.classList.toggle(c, z.classList.contains(c));
-      });
-    });
+    paint(); draw();
+    strip.__redraw = function () { measure(); paint(); draw(); };
   }
 
   function init() {
-    if (off()) return;
+    if (offSwitch()) return;
     var strip = document.getElementById("sprintSpec");
     if (!strip) return;
-    /* the zones are built by the arcade's own script; wait for them */
     if (!strip.querySelector(".fzone")) return setTimeout(init, 150);
     try { wire(strip); } catch (e) { /* the cabinet still plays */ }
   }
@@ -183,8 +224,11 @@
     document.addEventListener("DOMContentLoaded", init);
   else init();
 
-  global.AwakenBells = { init: init, rebuild: function () {
-    var s = document.getElementById("sprintSpec");
-    if (s) { build(s); }
-  } };
+  global.AwakenBells = {
+    init: init,
+    rebuild: function () {
+      var s = document.getElementById("sprintSpec");
+      if (s && s.__redraw) s.__redraw();
+    }
+  };
 })(window);
