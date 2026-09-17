@@ -2,3 +2,7 @@
 .vercel/
 *.log
 __pycache__/
+DB-CONNECTION*
+supabase/tools/node_modules/
+supabase/.env*
+supabase/.temp/
