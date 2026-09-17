@@ -7787,7 +7787,7 @@ function paintAvailability(){
     listenBand=avail()[0];
     [...lspec.children].forEach((c,i)=>c.setAttribute("aria-pressed",BANDS[i].hz===listenBand));
   }
-  [...spSpec.children].forEach((c,i)=>{
+  spZones().forEach((c,i)=>{
     const ok=hasBand(BANDS[i].hz); c.classList.toggle("off",!ok);
     if(!spRunning||!ok) c.disabled=true;
   });
@@ -7929,6 +7929,12 @@ let spV=null,spSlot=0,spTimer=null,spBand=null,spGain=12,spLock=false,
     spScore=0,spWave=1,spStreak=0,spBest=0,spLives=3,spCorrectInWave=0,spLeft=60,spRunning=false;
 const GAIN_LADDER=[12,9,6,4.5,3,2,1.5];
 const spSpec=$("#sprintSpec");
+/* 16 Sep 2026: ALWAYS select the zones, never index spSpec.children.
+   awaken-bells.js inserts an SVG overlay as a child of the strip, so
+   children became [svg, zone0..zone8] - ten entries against nine BANDS.
+   BANDS[9].hz threw inside nextRound, which froze the game after every
+   answer. A function declaration so it hoists above the earlier callers. */
+function spZones(){ return [...spSpec.querySelectorAll(".fzone")]; }
 /* zone edges are the geometric midpoints between neighbouring band centres,
    so every zone is exactly the region of the spectrum that band owns */
 const FLO=20, FHI=20000, LSPAN=Math.log(FHI/FLO);
@@ -7943,7 +7949,7 @@ function showReadout(i,good){
   el.querySelector(".nm").textContent=b.nm;
   el.classList.toggle("good",!!good);
   el.classList.add("on");
-  const strip=spSpec.getBoundingClientRect(), z=spSpec.children[i].getBoundingClientRect();
+  const strip=spSpec.getBoundingClientRect(), z=spZones()[i].getBoundingClientRect();
   const cx=z.left+z.width/2-strip.left, half=el.offsetWidth/2;
   el.style.left=Math.max(half+10,Math.min(strip.width-half-10,cx))+"px";
 }
@@ -8001,9 +8007,9 @@ function sprintHud(){
 function nextRound(){
   spLock=false;
   readoutLock=false; hideReadout();
-  [...spSpec.children].forEach(c=>{c.classList.remove("correct","wrong","elim");c.disabled=false;c.classList.add("armed");});
+  spZones().forEach(c=>{c.classList.remove("correct","wrong","elim");c.disabled=false;c.classList.add("armed");});
   fzHintUsed=false;
-  [...spSpec.children].forEach((c,i)=>{if(!hasBand(BANDS[i].hz))c.disabled=true;});
+  spZones().forEach((c,i)=>{if(!hasBand(BANDS[i].hz))c.disabled=true;});
   const pool=avail();
   spBand=pool[Math.floor(Math.random()*pool.length)];
   const dl=[{hz:spBand,gain:spGain,q:2.6}];
@@ -8019,7 +8025,7 @@ function nextRound(){
 function answer(hz,el){
   if(!spRunning||spLock)return;
   spLock=true;
-  const right=hz===spBand, tgt=[...spSpec.children][BANDS.findIndex(b=>b.hz===spBand)];
+  const right=hz===spBand, tgt=spZones()[BANDS.findIndex(b=>b.hz===spBand)];
   if(right){
     spHitTotal++;
     el.classList.add("correct"); readoutLock=true; showReadout(BANDS.findIndex(x=>x.hz===hz),true); spStreak++; spBest=Math.max(spBest,spStreak); spCorrectInWave++;
@@ -8069,7 +8075,7 @@ function endSprint(silent){
   $("#eqOn").disabled=true;$("#eqOff").disabled=true;
   updateFzHint();
   readoutLock=false; hideReadout();
-  [...spSpec.children].forEach(c=>{c.disabled=true;c.classList.remove("correct","wrong","armed");});
+  spZones().forEach(c=>{c.disabled=true;c.classList.remove("correct","wrong","armed");});
   $("#sprintFb").className="feedback";
   $("#sprintFb").textContent=(spLives<=0?"GAME OVER":"TIME")+" — SCORE "+spScore+" · WAVE "+spWave+" · BEST STREAK "+spBest;
   if(silent) return;
@@ -8104,7 +8110,7 @@ function updateFzHint(){
   const btn=$("#frenzyHint"), left=$("#fzHintLeft");
   const allowed=FZ_HINTS[spStartIdx];
   left.textContent = allowed===0 ? "—" : fzHintsLeft;
-  const live=[...spSpec.children].filter(c=>!c.disabled).length;
+  const live=spZones().filter(c=>!c.disabled).length;
   btn.disabled = !spRunning || allowed===0 || fzHintsLeft<=0 || spLock || live<3;
   btn.title = allowed===0 ? "Elimination is disabled on Certified"
             : !spRunning ? "Start a run to use eliminations"
@@ -8113,7 +8119,7 @@ function updateFzHint(){
 /* process of elimination — knock out wrong answers, never the right one */
 $("#frenzyHint").onclick=()=>{
   if(!spRunning||spLock||fzHintsLeft<=0) return;
-  const cells=[...spSpec.children];
+  const cells=spZones();
   const wrong=[];
   cells.forEach((c,i)=>{
     if(!c.disabled && BANDS[i].hz!==spBand && !c.classList.contains("elim")) wrong.push(c);
@@ -8140,7 +8146,7 @@ $("#sprintRestart").onclick=()=>{
   spScore=0; spWave=1; spStreak=0; spBest=0; spLives=3; spCorrectInWave=0; spLeft=60;
   spGain=GAIN_LADDER[spStartIdx]; fzHintsLeft=FZ_HINTS[spStartIdx]; fzHintUsed=false;
   readoutLock=false; hideReadout();
-  [...spSpec.children].forEach(c=>c.classList.remove("elim","correct","wrong","armed"));
+  spZones().forEach(c=>c.classList.remove("elim","correct","wrong","armed"));
   updateFzHint();
   $("#sprintFb").className="feedback"; $("#sprintFb").textContent="RESET — PRESS START";
   $("#sprintNote").textContent=""; sprintHud();
