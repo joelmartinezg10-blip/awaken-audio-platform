@@ -111,6 +111,12 @@ nav.links a{
 }
 nav.links a:hover{color:var(--white);background:#ffffff08}
 nav.links a[aria-current="page"]{color:var(--white);background:var(--accent-soft);box-shadow:inset 0 -2px 0 var(--accent)}
+/* The Companion is the live action on this bar, so it carries Awaken Heat
+   rather than sitting muted like the reference sections. Heat behaves like
+   signal energy in this palette - exactly one thing on the bar gets it. */
+nav.links a.nav-companion{color:#FF5A36;border:1px solid rgba(255,90,54,.45);background:rgba(255,90,54,.1)}
+nav.links a.nav-companion:hover{color:#09090B;background:#FF5A36;border-color:#FF5A36}
+nav.links a.nav-companion[aria-current="page"]{color:#09090B;background:#FF5A36;border-color:#FF5A36;box-shadow:none}
 
 /* ---------- hero ---------- */
 .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
@@ -1734,6 +1740,11 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
           <a href="#/iem">IEM Mix Room</a>
         </span>
       </span>
+      <!-- 16 Sep 2026: top level, not buried under My Profile. This is the
+           one thing a volunteer opens at a console in a hurry, and a tool you
+           have to go looking for is a tool nobody uses. Lit in Awaken Heat so
+           it reads as the live action on the bar rather than another tab. -->
+      <a href="#/companion" class="nav-companion" data-g="companion">Companion</a>
       <!-- Day 2, 15 Sep 2026: this link had no data-auth, so it read "Log in"
            to signed-in users forever. paintHeader() toggles [data-auth] on
            every render; the link was simply never enrolled. -->
@@ -5138,7 +5149,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     '/dashboard':{el:'p-dashboard',accent:'#FF5A36', g:'me'},
     '/courses': {el:'p-courses', accent:'#FF5A36', g:'me'},
     '/reflections':{el:'p-reflections',accent:'#FF5A36', g:'me'},
-    '/companion':{el:'p-companion',accent:'#FF5A36', g:'me'},
+    '/companion':{el:'p-companion',accent:'#FF5A36', g:'companion'},
     '/admin':   {el:'p-admin',   accent:'#7657FF', g:'me'},
     '/profile': {el:'p-profile', accent:'#FF5A36', g:'me'},
     '/iem':     {el:'p-iem',     accent:'#7657FF', g:'training'},
@@ -5148,7 +5159,7 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     program:  [['/program','Program Overview'],['/ear','Critical Listening'],['/proc','Processing']],
     seats:    [['/foh','Front of House'],['/mons','Monitors']],
     training: [['/arcade','Arcade'],['/iem','IEM Mix Room']],
-    me:       [['/profile','My Profile'],['/dashboard','My Progress'],['/companion','Service Companion'],['/reflections','Reflections'],['/courses','Courses'],['/admin','Admin']]
+    me:       [['/profile','My Profile'],['/dashboard','My Progress'],['/reflections','Reflections'],['/courses','Courses'],['/admin','Admin']]
   };
   function soft(hex){
     var r=parseInt(hex.substr(1,2),16),g=parseInt(hex.substr(3,2),16),b=parseInt(hex.substr(5,2),16);
