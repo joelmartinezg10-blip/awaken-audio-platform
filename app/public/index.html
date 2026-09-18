@@ -6358,41 +6358,53 @@ body.cpx-full header.nav,body.cpx-full > footer{display:none!important}
 
 /* ---- laptop console layout ---- */
 @media (min-width:1024px){
-  #p-companion .cpx-side{display:flex;flex-direction:column;flex:0 0 240px;border-right:1px solid var(--cx-line);background:#0D0D10;padding:20px;box-sizing:border-box}
-  #p-companion .cpx-main{max-width:none;margin:0}
-  #p-companion .cpx-head{padding:12px 28px;border-bottom:1px solid var(--cx-line);display:flex;align-items:center;justify-content:space-between;min-height:72px;gap:18px;box-sizing:border-box}
+  #p-companion .cpx-side{display:flex;flex-direction:column;flex:0 0 clamp(220px,17vw,340px);border-right:1px solid var(--cx-line);
+    background:#0D0D10;padding:clamp(20px,1.6vw,32px);box-sizing:border-box;overflow-y:auto;height:100%}
+  #p-companion .cpx-main{max-width:none;margin:0;height:100%}
+  #p-companion .cpx-head{padding:clamp(12px,1.2vw,22px) clamp(24px,2.4vw,48px);border-bottom:1px solid var(--cx-line);display:flex;
+    align-items:center;justify-content:space-between;gap:18px;box-sizing:border-box}
   #p-companion .cpx-head .cpx-titlerow{margin-top:0}
+  #p-companion .cpx-head .cpx-title{font-size:clamp(22px,1.9vw,36px)}
   #p-companion .cpx-head .ph-only{display:none}
-  #p-companion .cpx-head .cpx-budget{margin:0;padding:6px 14px;flex:0 0 auto}
-  #p-companion .cpx-head .cpx-budget b{font-size:20px;margin-top:0}
+  #p-companion .cpx-head .cpx-budget{margin:0;padding:clamp(6px,.6vw,12px) clamp(14px,1.2vw,22px);flex:0 0 auto}
+  #p-companion .cpx-head .cpx-budget b{font-size:clamp(20px,1.8vw,34px);margin-top:0}
   #p-companion .cpx-head .cpx-budget small{display:none}
-  #p-companion .cpx-body{padding:24px 28px}
-  #p-companion .cpx-foot{padding:0 28px 24px;max-width:696px;box-sizing:border-box}
-  #p-companion .cpx-body>.cpx-col,#p-companion .cpx-foot{max-width:640px}
-  #p-companion .cpx-body.split{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-content:start;max-width:1040px}
-  #p-companion .cpx-body.split>.cpx-col{max-width:none}
+  #p-companion .cpx-body{padding:clamp(20px,2.4vw,48px)}
+  #p-companion .cpx-body>.cpx-col{max-width:820px;margin:0 auto}
+  #p-companion .cpx-foot{padding:0 clamp(20px,2.4vw,48px) clamp(20px,2vw,40px);width:100%;max-width:916px;margin:0 auto;box-sizing:border-box}
+  #p-companion .cpx-body.split{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:clamp(20px,2vw,40px);align-content:start}
+  #p-companion .cpx-body.split>.cpx-col{max-width:none;margin:0}
   #p-companion .cpx-body.split + .cpx-foot{display:none}
-  #p-companion .cpx-desk-controls{display:grid!important;gap:10px}
+  #p-companion .cpx-desk-controls{display:grid!important;gap:clamp(10px,.9vw,16px)}
+  #p-companion .cpx-body.split .cpx-now,#p-companion .cpx-held{padding:clamp(18px,1.8vw,36px)}
+  #p-companion .cpx-body.split .cpx-now-name,#p-companion .cpx-held h2{font-size:clamp(72px,7.5vw,160px)}
+  #p-companion .cpx-now-row,#p-companion .cpx-held .row1{font-size:clamp(11px,.8vw,15px)}
+  #p-companion .cpx-now-d{font-size:clamp(12px,.85vw,16px)}
+  #p-companion .cpx-go,#p-companion .cpx-btn{min-height:clamp(60px,6.5vh,96px);font-size:clamp(16px,1.2vw,24px)}
+  #p-companion .cpx-upnext b{font-size:clamp(15px,1.3vw,26px)}
+  #p-companion .cpx-upnext{font-size:clamp(12px,.8vw,15px)}
+  #p-companion .cpx-lab{font-size:clamp(11px,.75vw,14px)}
+  #p-companion textarea.cpx-ta{font-size:clamp(14px,.9vw,17px);min-height:clamp(92px,14vh,220px)}
   #p-companion .cpx-queue{display:block;background:var(--cx-panel);border:1px solid var(--cx-line);border-radius:10px;padding:14px}
   #p-companion kbd{display:inline}
   #p-companion .cpx-sheet{align-items:center}
   #p-companion .cpx-sheet-in{border-radius:14px}
-  #p-companion .sd-brand{display:flex;justify-content:space-between;align-items:center;font-family:var(--display);font-size:15px;text-transform:uppercase}
-  #p-companion .sd-camp{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--cx-muted);text-transform:uppercase;margin-top:4px}
+  #p-companion .sd-brand{display:flex;justify-content:space-between;align-items:center;font-family:var(--display);font-size:clamp(15px,1.1vw,20px);text-transform:uppercase}
+  #p-companion .sd-camp{font-family:var(--mono);font-size:clamp(10px,.7vw,13px);letter-spacing:.1em;color:var(--cx-muted);text-transform:uppercase;margin-top:4px}
   #p-companion .sd-stage{background:var(--cx-panel);border:1px solid var(--cx-line);border-radius:8px;padding:12px;margin:24px 0}
-  #p-companion .sd-stage p{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--cx-muted);margin:0 0 8px;text-transform:uppercase}
+  #p-companion .sd-stage p{display:flex;justify-content:space-between;font-family:var(--mono);font-size:clamp(10px,.7vw,13px);letter-spacing:.08em;color:var(--cx-muted);margin:0 0 8px;text-transform:uppercase}
   #p-companion .sd-track{display:flex;gap:3px}
   #p-companion .sd-track i{flex:1;height:4px;border-radius:2px;background:var(--cx-line)}
   #p-companion .sd-track i.d{background:var(--cx-orange)}
   #p-companion .sd-nav button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;border-radius:6px;color:var(--cx-muted);
-    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:10px 12px;cursor:pointer;text-align:left;margin-bottom:4px}
-  #p-companion .sd-nav button.on{background:var(--cx-panel2);color:var(--white)}
+    font-family:var(--mono);font-size:clamp(11px,.8vw,15px);letter-spacing:.08em;text-transform:uppercase;padding:clamp(10px,.8vw,14px) 12px;cursor:pointer;text-align:left;margin-bottom:4px}
+  #p-companion .sd-nav button.on{background:var(--cx-panel2);color:var(--white);box-shadow:inset 0 0 0 1px var(--cx-orange)}
   #p-companion .sd-nav button i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--cx-dim);flex:0 0 8px}
   #p-companion .sd-nav button.done i{background:var(--cx-green);border-color:var(--cx-green)}
   #p-companion .sd-nav button.on i{background:var(--cx-orange);border-color:var(--cx-orange)}
   #p-companion .sd-nav button em{margin-left:auto;font-style:normal;background:var(--cx-pink);color:#0A0A0C;border-radius:4px;padding:1px 6px;font-size:10px}
-  #p-companion .sd-foot{margin-top:auto;border-top:1px solid var(--cx-line);padding-top:14px;font-family:var(--mono);font-size:11px;color:var(--cx-muted)}
-  #p-companion .sd-foot b{display:block;color:var(--white);font-size:14px;margin-top:3px;font-weight:500}
+  #p-companion .sd-foot{margin-top:auto;border-top:1px solid var(--cx-line);padding-top:14px;font-family:var(--mono);font-size:clamp(11px,.75vw,14px);color:var(--cx-muted)}
+  #p-companion .sd-foot b{display:block;color:var(--white);font-size:clamp(14px,1vw,18px);margin-top:3px;font-weight:500}
 }
 #p-companion .cpx-desk-controls{display:none}
 
