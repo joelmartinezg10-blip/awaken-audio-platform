@@ -1,26 +1,38 @@
 /* ============================================================
- * Awaken Audio - Service Companion
+ * Awaken Audio - Service Companion  (Figma redesign, Sep 2026)
  *
  * The line check and soundcheck, on a phone, in a dark room,
- * one-handed, standing up. Line check is a live pass: one Now
- * card, a signal-path you can feel, swipe or a large Next to
- * advance. Prep phases stay a list. The FOH booth and Monitor
- * World are the primary devices; a desk is the exception.
+ * one-handed, standing up. A run is a sequence of STAGES:
  *
- * ONE RUN PER PERSON PER SEAT PER DATE. FOH and MONS each walk
- * the same 23-input sequence with their own seat's tasks. They
- * advance independently - MONS calls the room, FOH shadows the
- * same channel, but each phone keeps its own position. A shared
- * live position is a websocket and a presence model; the seam
- * is left for it and nothing here assumes it is absent.
+ *   Prep (FOH or MONS) > Huddle > Line Check > Revisit Queue >
+ *   System Ready > Rehearsal > Pre-Service
+ *
+ * Line check is one input at a time: a big Now card, Up Next, a
+ * note per input, Flag & Delay / Skip / Confirm. Swipe right is
+ * Confirm, swipe left is Flag. A Full list sheet jumps anywhere.
+ *
+ * ONE RUN PER PERSON PER SEAT PER DATE. FOH and MONS advance
+ * independently. A shared live position (Mons <-> FOH sync) is
+ * parked as its own project; nothing here assumes it is absent.
  *
  * COME BACK TO IT is the protocol, so a flag never stops the run -
- * except on tracks, click, cue and drums, which carry blocks_run and
- * hold everything until they are resolved. Flagged items reappear at
- * the end of line check automatically.
+ * except on inputs that carry blocks_run (tracks, click, cue,
+ * drums). Flagging one of those shows RUN HELD. The engineer can
+ * Re-test (Good) or, if they absolutely must move on, BYPASS: hold
+ * the button for two seconds and give a reason. Bypassed inputs are
+ * red in the Revisit Queue, on System Ready, and in the reflection.
  *
- * FIFTEEN MINUTES is a real budget, not decoration: any minute over
- * eats the band's rehearsal. The clock is minutes on this pass.
+ * FIFTEEN MINUTES is a real budget. The clock starts on the first
+ * line-check input, counts DOWN, and goes red and negative when over.
+ *
+ * States in item_states (jsonb, no schema change):
+ *   ok | skipped | flagged | bypassed   + note, reason, at
+ * A note may exist with no state yet (a note written before the
+ * input was confirmed).
+ *
+ * Service days: WED and SUN buttons pick the upcoming date (today on
+ * a service day). A finished run with no reflection for that date
+ * puts a "reflection waiting" banner on Setup.
  *
  * Nothing here writes to another person's run. Insert and update are
  * profile_id = auth.uid() at the database; this file never tries.
@@ -37,34 +49,53 @@
       return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
     });
   }
-  function todayISO() {
-    var d = new Date();
+  function iso(d) {
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
       "-" + String(d.getDate()).padStart(2, "0");
   }
+  function todayISO() { return iso(new Date()); }
+  function parseISO(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  /* The next date that falls on weekday dow (0 = Sun, 3 = Wed); today counts. */
+  function nextDow(dow) {
+    var d = new Date(); d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + ((dow - d.getDay() + 7) % 7));
+    return iso(d);
+  }
+  var DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function shortDate(s) { var d = parseISO(s); return DOW[d.getDay()].slice(0, 3) + " " + MON[d.getMonth()] + " " + d.getDate(); }
+  function dayName(s) { return DOW[parseISO(s).getDay()]; }
 
   var LINE_CHECK_TARGET = 15 * 60;        /* seconds */
-  var PHASE_ORDER = ["foh_prep", "mons_prep", "huddle", "line_check", "rehearsal", "pre_service"];
-  var PHASE_LABEL = {
-    foh_prep:    "FOH prep",
-    mons_prep:   "Monitor prep",
-    huddle:      "Huddle",
-    line_check:  "Line check",
-    rehearsal:   "Rehearsal",
+  var SWIPE_PX = 72;
+  var HOLD_MS = 2000;
+
+  var STAGE_LABEL = {
+    prep: "Console prep", huddle: "Huddle", line_check: "Live line check",
+    revisit: "Revisit queue", ready: "System ready", rehearsal: "Rehearsal",
     pre_service: "Pre-service"
   };
-  var SWIPE_PX = 72;
+  var STAGE_TITLE = {
+    prep: "Console prep", huddle: "Huddle", line_check: "Line check",
+    revisit: "Revisit queue", ready: "System ready", rehearsal: "Rehearsal",
+    pre_service: "Pre-service"
+  };
 
   var S = {
     items: null,        /* the template, all 54, in sort order */
     run: null,          /* the row from service_companion_runs */
     seat: "foh",
-    phase: null,
-    focusId: null,      /* current line-check item; derived if null */
+    date: null,         /* chosen service date on Setup */
+    stage: null,
+    focusId: null,      /* current line-check input */
+    revisitId: null,    /* input being re-checked from the queue */
+    sheet: false,       /* full list open */
     preview: false,     /* in-memory pass; never writes */
     saveTimer: null,
     tick: null,
-    dirty: false
+    dirty: false,
+    saveMsg: "",
+    saveBad: false
   };
   var swallowClick = false;
 
@@ -145,9 +176,6 @@
 
   /* ---------- data ---------- */
 
-  /* Two plain queries rather than one with an embedded filter. The embed
-     syntax resolves through a foreign key and fails in ways that are hard
-     to read from a booth; this cannot be ambiguous. */
   function loadTemplate() {
     if (S.items && !S.preview) return Promise.resolve(S.items);
     return sb.from("service_companion_templates")
@@ -168,8 +196,6 @@
       });
   }
 
-  /* getCurrentUser returns the profile row, whose id IS the auth uid
-     (profiles.id references auth.users.id). Null until the profile lands. */
   function myId() {
     var u = D.getCurrentUser && D.getCurrentUser();
     return u ? u.id : null;
@@ -202,16 +228,10 @@
     });
   }
 
-  /* Debounced. A checklist at a console gets tapped fast and the network
-     in a booth is not always kind; batching keeps it to one write a
-     second rather than one per tap. */
+  /* Debounced: one write a second, not one per tap. */
   function save(now) {
     if (!S.run) return;
-    if (S.preview) {
-      S.dirty = false;
-      setHint("Preview — not saved");
-      return;
-    }
+    if (S.preview) { S.dirty = false; setSave("Preview · not saved"); return; }
     S.dirty = true;
     if (S.saveTimer) clearTimeout(S.saveTimer);
     var go = function () {
@@ -226,143 +246,114 @@
       sb.from("service_companion_runs").update(patch).eq("id", S.run.id)
         .then(function (r) {
           S.dirty = false;
-          setHint(r.error ? "Not saved - check your connection" : "Saved", !!r.error);
+          setSave(r.error ? "Not saved · check connection" : "Saved", !!r.error);
         });
     };
     if (now) go(); else S.saveTimer = setTimeout(go, 900);
   }
-
+  function setSave(msg, bad) {
+    S.saveMsg = msg; S.saveBad = !!bad;
+    var el = $("#cpSave"); if (el) { el.textContent = msg; el.className = "cpx-save" + (bad ? " bad" : ""); }
+  }
   function setHint(msg, bad) {
-    ["#cpHint", "#cpHint2"].forEach(function (sel) {
-      var el = $(sel); if (!el) return;
-      el.textContent = msg || "";
-      el.className = "cphint" + (bad ? " bad" : "");
-    });
+    var el = $("#cpHint"); if (!el) return;
+    el.textContent = msg || "";
+    el.className = "cpx-hint" + (bad ? " bad" : "");
   }
 
   /* ---------- state helpers ---------- */
 
   function stateOf(item) {
-    var st = S.run && S.run.item_states && S.run.item_states[item.id];
-    return st || null;
+    return (S.run && S.run.item_states && S.run.item_states[item.id]) || null;
   }
-  function setState(item, value, note) {
+  function st(item) { var x = stateOf(item); return x && x.state ? x.state : null; }
+  function noteOf(item) { var x = stateOf(item); return x ? (x.note || "") : ""; }
+  function patchState(item, fields) {
     if (!S.run) return;
     if (!S.run.item_states) S.run.item_states = {};
-    if (value === null) delete S.run.item_states[item.id];
-    else S.run.item_states[item.id] = {
-      state: value,
-      note: note || "",
-      at: new Date().toISOString()
-    };
-    if (item.phase === "line_check" && !S.run.line_check_started_at) {
+    var cur = S.run.item_states[item.id] || {};
+    var next = {};
+    Object.keys(cur).forEach(function (k) { next[k] = cur[k]; });
+    Object.keys(fields).forEach(function (k) { next[k] = fields[k]; });
+    next.at = new Date().toISOString();
+    if (!next.state && !next.note && !next.reason) delete S.run.item_states[item.id];
+    else S.run.item_states[item.id] = next;
+    if (item.phase === "line_check" && fields.state && !S.run.line_check_started_at) {
       S.run.line_check_started_at = new Date().toISOString();
       startTick();
     }
     save();
   }
+  function setState(item, value) { patchState(item, { state: value || null }); }
 
-  /* Items this seat actually sees. A FOH engineer is not walked through
-     scanning IEM packs, and the reverse. */
   function visible(phase) {
     return (S.items || []).filter(function (i) {
       if (i.phase !== phase) return false;
       return i.seat_scope === "both" || i.seat_scope === S.seat;
     });
   }
-  function phasesForSeat() {
-    return PHASE_ORDER.filter(function (p) {
-      if (p === "foh_prep"  && S.seat !== "foh")  return false;
-      if (p === "mons_prep" && S.seat !== "mons") return false;
-      return visible(p).length > 0;
+  function lineInputs() {
+    return visible("line_check").filter(function (i) { return !i.is_marker; });
+  }
+  function stages() {
+    return ["prep", "huddle", "line_check", "revisit", "ready", "rehearsal", "pre_service"];
+  }
+  function stageItems(stage) {
+    if (stage === "prep") return visible(S.seat === "foh" ? "foh_prep" : "mons_prep");
+    if (stage === "huddle") return visible("huddle");
+    if (stage === "rehearsal") return visible("rehearsal");
+    if (stage === "pre_service") return visible("pre_service");
+    return [];
+  }
+  /* Everything still owed a second look. */
+  function revisitList() {
+    return lineInputs().filter(function (i) {
+      var s = st(i); return s === "flagged" || s === "bypassed";
     });
   }
-  function flagged() {
-    return (S.items || []).filter(function (i) {
-      var st = stateOf(i);
-      return st && st.state === "flagged";
-    });
+  function revisitOpen() { return revisitList(); }
+  function heldItem() {
+    return lineInputs().filter(function (i) { return i.blocks_run && st(i) === "flagged"; })[0] || null;
   }
-  /* Only a FLAGGED blocking item holds the run. An untouched one just has
-     not been reached yet - counting those made the banner shout "4 inputs
-     holding the run" the instant line check opened, before anyone had done
-     anything. A warning that fires when nothing is wrong gets ignored by
-     week three, and then it is worse than no warning. */
-  function blockers() {
-    return (S.items || []).filter(function (i) {
-      if (!i.blocks_run) return false;
-      var st = stateOf(i);
-      return !!st && st.state === "flagged";
-    });
+  function passed(item) {
+    var s = st(item);
+    if (s === "ok" || s === "skipped" || s === "bypassed") return true;
+    if (s === "flagged" && !item.blocks_run) return true;
+    return false;
   }
-  function counts(phase) {
-    var list = visible(phase).filter(function (i) { return !i.is_marker; });
-    var done = list.filter(function (i) {
-      var st = stateOf(i); return st && st.state !== "flagged";
-    }).length;
-    return { done: done, total: list.length };
-  }
-
   function itemById(id) {
     return (S.items || []).filter(function (x) { return x.id === id; })[0] || null;
   }
-  function indexOfItem(list, item) {
-    if (!item) return -1;
-    var i;
-    for (i = 0; i < list.length; i++) if (list[i].id === item.id) return i;
-    return -1;
-  }
-  /* Walked on the first pass: Good, Skip, or a non-blocking Flag.
-     Blocking flags stay underfoot until they are resolved. */
-  function passed(item) {
-    var st = stateOf(item);
-    if (!st) return false;
-    if (st.state === "ok" || st.state === "skipped") return true;
-    if (st.state === "flagged" && !item.blocks_run) return true;
-    return false;
-  }
-  function lineInputs(list) {
-    return (list || []).filter(function (i) { return !i.is_marker; });
+  function stageDone(stage) {
+    if (stage === "line_check") return lineInputs().every(passed);
+    if (stage === "revisit") return stageDone("line_check") && !revisitOpen().length;
+    if (stage === "ready") return !!S.run.line_check_ended_at;
+    if (stage === "huddle" || stage === "rehearsal") {
+      return stages().indexOf(S.stage) > stages().indexOf(stage);
+    }
+    var list = stageItems(stage).filter(function (i) { return !i.is_marker && !i.is_optional; });
+    return list.length > 0 && list.every(function (i) { return st(i) === "ok" || st(i) === "skipped"; });
   }
 
   function focusItem() {
-    var list = visible("line_check");
+    var list = lineInputs();
     if (!list.length) return null;
-
-    var bl = blockers();
-    if (bl.length) return bl[0];
-
-    if (S.focusId) {
-      var hit = itemById(S.focusId);
-      if (hit && hit.phase === "line_check") return hit;
-    }
-
-    var i, it;
-    for (i = 0; i < list.length; i++) {
-      it = list[i];
-      if (it.is_marker) continue;
-      if (!passed(it)) return it;
-    }
-    for (i = 0; i < list.length; i++) {
-      if (list[i].is_marker) return list[i];
-    }
-    return list[list.length - 1];
+    var h = heldItem(); if (h) return h;
+    if (S.focusId) { var hit = itemById(S.focusId); if (hit && hit.phase === "line_check" && !hit.is_marker) return hit; }
+    for (var i = 0; i < list.length; i++) if (!passed(list[i])) return list[i];
+    return null;   /* every input walked */
   }
-
   function advanceFrom(item) {
-    var list = visible("line_check");
-    var idx = indexOfItem(list, item);
-    var i, it, open;
-    for (i = idx + 1; i < list.length; i++) {
-      it = list[i];
-      if (it.is_marker) {
-        open = list.filter(function (x) { return !x.is_marker && !passed(x); });
-        if (!open.length) { S.focusId = it.id; return; }
-        continue;
-      }
-      if (!passed(it)) { S.focusId = it.id; return; }
-    }
-    if (list.length) S.focusId = list[list.length - 1].id;
+    var list = lineInputs(), idx = list.indexOf(item), i;
+    for (i = idx + 1; i < list.length; i++) if (!passed(list[i])) { S.focusId = list[i].id; return; }
+    for (i = 0; i < idx; i++) if (!passed(list[i])) { S.focusId = list[i].id; return; }
+    S.focusId = null;
+    goStage("revisit");
+  }
+  function nextAfter(item) {
+    var list = lineInputs(), idx = list.indexOf(item);
+    for (var i = idx + 1; i < list.length; i++) if (!passed(list[i])) return list[i];
+    return idx >= 0 && idx < list.length - 1 ? list[idx + 1] : null;
   }
 
   /* ---------- the clock ---------- */
@@ -373,484 +364,611 @@
     return Math.max(0, Math.round((end - new Date(S.run.line_check_started_at)) / 1000));
   }
   function mmss(s) {
-    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    var neg = s < 0; s = Math.abs(s);
+    return (neg ? "−" : "") + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   }
-  function startTick() {
-    stopTick();
-    S.tick = setInterval(paintClock, 1000);
-    paintClock();
-  }
+  function startTick() { stopTick(); S.tick = setInterval(paintClock, 1000); paintClock(); }
   function stopTick() { if (S.tick) { clearInterval(S.tick); S.tick = null; } }
+  function budgetHTML() {
+    var started = S.run && S.run.line_check_started_at;
+    var left = LINE_CHECK_TARGET - lineCheckSeconds();
+    var cls = "cpx-budget" + (!started ? " idle" : (left < 0 ? " over" : ""));
+    var lab = !started ? "Line check budget" : (left < 0 ? "Over budget" : "Budget remaining");
+    var val = !started ? "15:00" : mmss(left);
+    var sub = !started ? "Starts on the first input of line check"
+      : (S.run.line_check_ended_at ? "Line check finished" : (left < 0 ? "Every minute over eats rehearsal" : "of 15:00"));
+    return '<div class="' + cls + '" id="cpClock"><span>' + lab + "</span><b>" + val + "</b><small>" + sub + "</small></div>";
+  }
   function paintClock() {
     var el = $("#cpClock"); if (!el) return;
-    if (!S.run || !S.run.line_check_started_at) { el.hidden = true; return; }
-    var s = lineCheckSeconds(), over = s > LINE_CHECK_TARGET;
-    var label = "on this pass";
-    if (over) label = "over the 15 min budget";
-    else if (s > LINE_CHECK_TARGET * 0.8) label = "on this pass · 15 min budget";
-    el.hidden = false;
-    el.className = "cpclock" + (over ? " over" : (s > LINE_CHECK_TARGET * 0.8 ? " near" : ""));
-    el.innerHTML = "<b>" + mmss(s) + "</b><span>" + label + "</span>";
-    if (S.run.line_check_ended_at) stopTick();
+    el.outerHTML = budgetHTML();
+    if (S.run && S.run.line_check_ended_at) stopTick();
   }
 
   /* ---------- rendering ---------- */
 
-  function itemHTML(i) {
-    var st = stateOf(i), cls = st ? " s-" + st.state : "";
-    var tags = "";
-    if (i.blocks_run)  tags += '<span class="cptag block">holds the run</span>';
-    else if (i.is_critical) tags += '<span class="cptag crit">critical</span>';
-    if (i.is_optional) tags += '<span class="cptag opt">if any</span>';
+  function seatName() { return S.seat === "foh" ? "FOH" : "MONS"; }
+  function stageNo() { return stages().indexOf(S.stage) + 1; }
 
-    return '<div class="cpitem' + cls + '" data-id="' + esc(i.id) + '">' +
-      '<div class="cpi-h"><span class="cpcode">' + esc(i.code) + '</span>' +
-      '<b>' + esc(i.label) + '</b>' + tags + '</div>' +
-      (i.detail ? '<p class="cpi-d">' + esc(i.detail) + '</p>' : '') +
-      '<div class="cpi-btns">' +
-        '<button type="button" class="cpb cpb-ok"   data-act="ok">Good</button>' +
-        '<button type="button" class="cpb cpb-skip" data-act="skipped">Skip</button>' +
-        '<button type="button" class="cpb cpb-flag" data-act="flagged">Flag</button>' +
-      '</div>' +
-      '<div class="cpi-note"' + (st && st.state === "flagged" ? "" : " hidden") + '>' +
-        '<textarea rows="2" placeholder="What is wrong? Short is fine.">' +
-          esc(st ? st.note : "") + '</textarea>' +
-      '</div>' +
-    '</div>';
+  function subLine() {
+    var bits = [seatName(), shortDate(S.run.service_date)];
+    if (S.stage === "line_check") {
+      var list = lineInputs(), cur = focusItem();
+      if (cur) bits.push("Input " + (list.indexOf(cur) + 1) + " of " + list.length);
+    } else bits.push("Stage " + stageNo() + " of " + stages().length);
+    return bits.join(" · ");
   }
 
-  function markerHTML(i) {
-    if (i.code === "D24") {
-      var f = flagged();
-      return '<div class="cpmark" data-id="' + esc(i.id) + '">' +
-        '<h4>' + esc(i.label) + '</h4><p>' + esc(i.detail) + '</p>' +
-        (f.length
-          ? '<ul class="cpflags">' + f.map(function (x) {
-              return '<li><button type="button" class="cpflag-jump" data-focus="' + esc(x.id) + '">' +
-                '<span class="cpcode">' + esc(x.code) + '</span> ' + esc(x.label) +
-                '</button>' +
-                (stateOf(x).note ? " <i>" + esc(stateOf(x).note) + "</i>" : "") + "</li>";
-            }).join("") + "</ul>"
-          : '<p class="cpnone">Nothing was flagged. Good line check.</p>') +
+  function headHTML(title) {
+    var n = stages().length, done = stages().filter(stageDone).length;
+    var pct = Math.round((Math.max(done, stageNo() - 1) / n) * 100);
+    return '<div class="ph-only"><div class="cpx-top"><button type="button" class="cpx-exit" data-exit>&larr; Exit</button>' +
+        '<span id="cpSave" class="cpx-save' + (S.saveBad ? " bad" : "") + '">' + esc(S.saveMsg) + "</span>" +
+        '<span class="cpx-live"><i></i>Live</span></div></div>' +
+      '<div><div class="cpx-titlerow"><h1 class="cpx-title">' + esc(title) + "</h1>" +
+        (S.preview ? '<span class="cpx-tag preview">Preview · not saved</span>' : '<span class="cpx-tag">Live companion</span>') +
+      '</div><p class="cpx-sub" style="margin-top:6px">' + esc(subLine()) + "</p></div>" +
+      '<div class="ph-only"><div class="cpx-rule"></div>' +
+        '<p class="cpx-prog"><span>Operation progress</span><b>' + stageNo() + "/" + n + " stages</b></p>" +
+        '<div class="cpx-bar"><i style="width:' + pct + '%"></i></div></div>' +
+      budgetHTML();
+  }
+
+  function sideHTML() {
+    var list = stages(), n = list.length, rv = revisitOpen().length;
+    return '<div class="sd-brand"><span>Awaken Audio</span><span class="cpx-live"><i></i>Live</span></div>' +
+      '<div class="sd-camp">' + esc(seatName()) + " · " + esc(shortDate(S.run.service_date)) + "</div>" +
+      '<div class="sd-stage"><p><span>Stage ' + stageNo() + " of " + n + "</span><span>" +
+        Math.round(((stageNo() - 1) / n) * 100) + '% done</span></p><div class="sd-track">' +
+        list.map(function (s, i) { return '<i class="' + (i < stageNo() - 1 || stageDone(s) ? "d" : "") + '"></i>'; }).join("") +
+      '</div></div><nav class="sd-nav">' +
+        list.map(function (s) {
+          var cls = (s === S.stage ? "on" : "") + (stageDone(s) && s !== S.stage ? " done" : "");
+          return '<button type="button" class="' + cls + '" data-stage="' + s + '"><i></i>' + esc(STAGE_LABEL[s]) +
+            (s === "revisit" && rv ? "<em>" + rv + "</em>" : "") + "</button>";
+        }).join("") +
+      '</nav><div class="sd-foot">Line check<b>' + (S.run.line_check_started_at ? mmss(lineCheckSeconds()) + " used" : "Not started") + "</b>" +
+      '<div style="margin-top:14px"><button type="button" class="cpx-exit" data-exit>Exit run</button></div></div>';
+  }
+
+  function checkItemHTML(i) {
+    if (i.is_marker) {
+      if (i.phase === "rehearsal") {
+        return '<div class="cpx-info"><h3>' + esc(i.label) + "</h3><p>" + esc(i.detail) + "</p></div>" +
+          '<div class="cpx-notes"><p class="cpx-lab">Rehearsal notes</p><textarea class="cpx-ta" id="cpNotes" rows="7" ' +
+          'placeholder="Anything worth remembering from the run-through.">' + esc(S.run.notes || "") + "</textarea></div>";
+      }
+      return '<div class="cpx-info"><h3>' + esc(i.label) + "</h3><p>" + esc(i.detail) + "</p></div>";
+    }
+    var s = st(i);
+    var tags = (i.is_critical ? '<span class="tg">critical</span>' : "") + (i.is_optional ? '<span class="tg opt">if any</span>' : "");
+    return '<div class="cpx-item' + (s ? " " + s : "") + '" role="button" tabindex="0" data-tick="' + esc(i.id) + '">' +
+      '<span class="cpx-box"></span><span style="flex:1;min-width:0"><b>' + esc(i.label) + tags + "</b>" +
+      (i.detail ? "<small>" + esc(i.detail) + "</small>" : "") +
+      (s === "flagged" && noteOf(i) ? '<small style="color:var(--cx-amber)">' + esc(noteOf(i)) + "</small>" : "") +
+      '</span><button type="button" class="cpx-more" data-more="' + esc(i.id) + '" aria-label="Skip or flag">' +
+      (s === "skipped" ? "Skip" : s === "flagged" ? "Flag" : "⋯") + "</button></div>";
+  }
+
+  function nowCardHTML(item, mode) {
+    var s = st(item);
+    var list = lineInputs(), idx = list.indexOf(item);
+    var tags = "";
+    if (item.blocks_run) tags += '<span class="cpx-pill hold">Holds the run</span>';
+    else if (item.is_critical) tags += '<span class="cpx-pill">Critical</span>';
+    if (item.is_optional) tags += '<span class="cpx-pill">If any</span>';
+    if (s === "flagged") tags += '<span class="cpx-pill flag">Flagged</span>';
+    if (s === "bypassed") tags += '<span class="cpx-pill byp">Bypassed</span>';
+    if (s === "ok") tags += '<span class="cpx-pill ok">Good</span>';
+    return '<div class="cpx-now' + (s ? " s-" + s : "") + '" data-id="' + esc(item.id) + '">' +
+      '<div class="cpx-now-row"><span class="on">' + (mode === "revisit" ? "Revisiting" : "Now testing") + "</span>" +
+        "<span>" + String(idx + 1).padStart(2, "0") + " / " + list.length + "</span></div>" +
+      '<h2 class="cpx-now-name">' + esc(item.label) + "</h2>" +
+      (item.detail ? '<p class="cpx-now-d">' + esc(item.detail) + "</p>" : "") +
+      (tags ? '<div class="cpx-now-tags">' + tags + "</div>" : "") +
+      (mode === "revisit" && stateOf(item) && stateOf(item).reason
+        ? '<p class="cpx-now-d" style="color:var(--cx-red);margin-top:10px">Bypassed: ' + esc(stateOf(item).reason) + "</p>" : "") +
+      (mode !== "revisit" ? '<div class="cpx-swipehint"><span>&larr; Flag</span><span>swipe</span><span>Good &rarr;</span></div>' : "") +
+    "</div>";
+  }
+
+  function lineButtons(item) {
+    return '<div class="row"><button type="button" class="cpx-btn amber" data-act="flagged">Flag &amp; delay<kbd>F</kbd></button>' +
+      '<button type="button" class="cpx-btn" data-act="skipped">Skip<kbd>S</kbd></button></div>' +
+      '<button type="button" class="cpx-go green" data-act="ok">Confirm signal OK<kbd>Space</kbd></button>';
+  }
+
+  function queueHTML() {
+    var q = revisitList();
+    return '<div class="cpx-queue"><p class="cpx-lab" style="display:flex;justify-content:space-between"><span>Flagged queue</span><span>' +
+      q.length + " input" + (q.length === 1 ? "" : "s") + "</span></p>" +
+      (q.length ? q.map(rvRow).join("") : '<p class="cpx-now-d">Nothing flagged yet.</p>') + "</div>";
+  }
+  function rvRow(i) {
+    var s = st(i), list = lineInputs();
+    var sub = s === "bypassed" ? "Bypassed · " + (stateOf(i).reason || "") : (noteOf(i) || "Flagged — no note");
+    return '<button type="button" class="cpx-rv' + (s === "bypassed" ? " byp" : "") + '" data-revisit="' + esc(i.id) + '">' +
+      '<span class="n">' + String(list.indexOf(i) + 1).padStart(2, "0") + "</span>" +
+      '<span style="min-width:0"><b>' + esc(i.label) + "</b><small>" + esc(sub) + '</small></span><span class="ch">&rsaquo;</span></button>';
+  }
+
+  function renderLineCheck(ctx) {
+    var held = heldItem();
+    if (held) return renderHeld(ctx, held);
+    var cur = focusItem();
+    if (!cur) { goStage("revisit"); return renderStage(ctx); }
+    S.focusId = cur.id;
+    var nx = nextAfter(cur);
+    ctx.title = "Line check";
+    ctx.split = true;
+    ctx.body =
+      '<div class="cpx-col">' + nowCardHTML(cur) +
+        '<div class="cpx-desk-controls">' + lineButtons(cur) + "</div></div>" +
+      '<div class="cpx-col">' +
+        '<div class="cpx-upnext">Up next &rarr; ' + (nx ? "<b>" + esc(nx.label) + "</b>" + (nx.detail ? "<small>(" + esc(nx.detail) + ")</small>" : "") : "<b>Revisit queue</b>") +
+          '<button type="button" class="cpx-listbtn" data-sheet>Full list</button></div>' +
+        '<div class="cpx-notes"><p class="cpx-lab">Notes · ' + esc(cur.label) + '</p><textarea class="cpx-ta" data-note="' + esc(cur.id) + '" rows="3" ' +
+          'placeholder="Write down anything to come back to (EQ, comp, etc.)">' + esc(noteOf(cur)) + "</textarea></div>" +
+        queueHTML() +
       "</div>";
-    }
-    if (i.code === "E1") {
-      return '<div class="cpmark" data-id="' + esc(i.id) + '">' +
-        '<h4>' + esc(i.label) + '</h4><p>' + esc(i.detail) + '</p>' +
-        '<textarea id="cpNotes" rows="5" placeholder="Anything worth remembering from the run-through.">' +
-          esc(S.run.notes || "") + "</textarea></div>";
-    }
-    return '<div class="cpmark" data-id="' + esc(i.id) + '">' +
-      "<h4>" + esc(i.label) + "</h4><p>" + esc(i.detail) + "</p></div>";
+    ctx.foot = lineButtons(cur);
   }
 
-  function destLabel() {
-    return S.seat === "mons" ? "MIXES" : "HOUSE";
+  function renderHeld(ctx, item) {
+    var x = stateOf(item) || {};
+    ctx.title = "Run held";
+    ctx.body =
+      '<div class="cpx-held" data-id="' + esc(item.id) + '"><div class="row1"><span class="on"><i></i>Critical blocker</span><span>Holds the run</span></div>' +
+        "<h2>" + esc(item.label) + '</h2><p class="cpx-now-d">' + esc(item.detail || "") + "</p></div>" +
+      '<div class="cpx-notes"><p class="cpx-lab">What is wrong / what is being done</p><textarea class="cpx-ta" data-note="' + esc(item.id) +
+        '" rows="3" placeholder="e.g. No signal on snare top. Asked Mons to check the stagebox patch.">' + esc(x.note || "") + "</textarea></div>" +
+      '<div class="cpx-notes"><p class="cpx-lab">Bypass reason (required to bypass)</p><textarea class="cpx-ta" id="cpReason" rows="2" ' +
+        'placeholder="Why the run must move on without this input">' + esc(x.reason || "") + "</textarea></div>";
+    ctx.foot =
+      '<button type="button" class="cpx-btn red cpx-bypass" id="cpBypass"' + ((x.reason || "").trim() ? "" : " disabled") +
+        '><span class="fill"></span><span>Hold 2s to bypass channel</span></button>' +
+      '<button type="button" class="cpx-go green" data-unblock>Re-test &amp; unblock run</button>';
   }
 
-  function pathHTML(list, current) {
-    var inputs = lineInputs(list);
-    var idx = 0, on = false, i;
-    for (i = 0; i < inputs.length; i++) {
-      if (current && inputs[i].id === current.id) { idx = i; on = true; break; }
-    }
-    if (!on && current && current.is_marker) idx = inputs.length;
-    var pct = 0;
-    if (inputs.length) {
-      pct = on
-        ? Math.round(((idx + 0.55) / inputs.length) * 100)
-        : Math.round((idx / inputs.length) * 100);
-    }
-    var ticks = inputs.map(function (it, n) {
-      var st = stateOf(it);
-      var cls = "cptick";
-      if (n < idx) cls += " done";
-      if (on && n === idx) cls += " now";
-      if (st && st.state === "flagged") cls += " flag";
-      else if (st && st.state === "ok") cls += " ok";
-      else if (st && st.state === "skipped") cls += " skipped";
-      return '<button type="button" class="' + cls + '" data-focus="' + esc(it.id) +
-        '" aria-label="' + esc(it.label) + '"></button>';
-    }).join("");
-    return '<div class="cppath" style="--p:' + pct + '%">' +
-      '<span class="cppath-end">STAGE</span>' +
-      '<div class="cppath-track"><div class="cppath-fill"></div>' +
-      '<div class="cppath-ticks">' + ticks + "</div></div>" +
-      '<span class="cppath-end">' + destLabel() + "</span></div>";
-  }
-
-  function trailHTML(list, current) {
-    var idx = indexOfItem(list, current);
-    var prev = list.slice(0, Math.max(0, idx)).filter(function (i) { return !i.is_marker; });
-    if (!prev.length) return '<div class="cptrail" hidden></div>';
-    return '<div class="cptrail">' + prev.map(function (it) {
-      var st = stateOf(it);
-      var cls = "cptrail-i" + (st ? " s-" + st.state : "");
-      return '<button type="button" class="' + cls + '" data-focus="' + esc(it.id) + '">' +
-        esc(it.label) + "</button>";
-    }).join("") + "</div>";
-  }
-
-  function nowActions(item, st) {
-    if (item.is_marker) {
-      return '<div class="cpnow-act">' +
-        '<button type="button" class="cpb cpb-next" data-next>Next phase</button></div>';
-    }
-    var hold = !!(item.blocks_run && st && st.state === "flagged");
-    return '<div class="cpnow-act">' +
-      '<button type="button" class="cpb cpb-next"' + (hold ? " disabled" : "") + " data-next>" +
-        (hold ? "Holding — Good or Skip to release" : "Good · Next") + "</button>" +
-      '<div class="cpi-btns cpnow-fb">' +
-        '<button type="button" class="cpb cpb-skip" data-act="skipped">Skip</button>' +
-        '<button type="button" class="cpb cpb-flag" data-act="flagged">Flag</button>' +
-      "</div>" +
-      '<p class="cpnow-fbhint">Swipe the channel right for Good, left for Flag. Skip is a tap.</p>' +
-    "</div>";
-  }
-
-  function nowHTML(item, list) {
-    if (!item) return "";
-    var st = stateOf(item);
-    var next = null;
-    var i = indexOfItem(list, item);
-    if (i >= 0 && i < list.length - 1) next = list[i + 1];
-
-    var tags = "";
-    if (item.blocks_run) tags += '<span class="cptag block">holds the run</span>';
-    else if (item.is_critical) tags += '<span class="cptag crit">critical</span>';
-    if (item.is_optional) tags += '<span class="cptag opt">if any</span>';
-
-    var seat = S.seat === "foh" ? "FOH" : "MONS";
-    var cls = "cpnow" + (st ? " s-" + st.state : "") + (item.is_marker ? " marker" : "");
-
-    var card = '<div class="' + cls + '" data-id="' + esc(item.id) + '">' +
-      '<div class="cpnow-ghost ok" aria-hidden="true">GOOD</div>' +
-      '<div class="cpnow-ghost flag" aria-hidden="true">FLAG</div>' +
-      '<p class="cpnow-sub"><span class="cpnow-seat ' + S.seat + '">' + seat +
-        "</span> · LINE CHECK</p>" +
-      '<h2 class="cpnow-name">' + esc(item.label) + "</h2>" +
-      (item.detail ? '<p class="cpnow-d">' + esc(item.detail) + "</p>" : "") +
-      (tags ? '<div class="cpnow-tags">' + tags + "</div>" : "") +
-      '<p class="cpnow-hint"><span>FLAG ←</span><b>swipe</b><span>→ GOOD</span></p>' +
-      (!item.is_marker
-        ? '<div class="cpi-note"' + (st && st.state === "flagged" ? "" : " hidden") + ">" +
-            '<textarea rows="2" placeholder="What is wrong? Short is fine.">' +
-              esc(st ? st.note : "") + "</textarea></div>"
-        : "") +
-    "</div>";
-
-    var peek = "";
-    if (next) {
-      peek = '<p class="cppeek">Next <b>' + esc(next.label) + "</b></p>";
-    }
-
-    if (item.is_marker) {
-      return pathHTML(list, item) + card + markerHTML(item) + peek + nowActions(item, st);
-    }
-    return pathHTML(list, item) + card + peek + nowActions(item, st);
-  }
-
-  function applyAct(item, value, fromGesture) {
-    if (!item || item.is_marker) return;
-    var cur = stateOf(item);
-    if (!fromGesture && cur && cur.state === value) {
-      setState(item, null);
-      S.focusId = item.id;
-      render();
-      return;
-    }
-    setState(item, value, cur ? cur.note : "");
-    if (S.phase === "line_check") {
-      if (value === "flagged") {
-        S.focusId = item.id;
-        render();
+  function renderRevisit(ctx) {
+    var q = revisitList();
+    if (S.revisitId) {
+      var it = itemById(S.revisitId);
+      if (it && q.indexOf(it) >= 0) {
+        ctx.title = "Revisit";
+        ctx.body = nowCardHTML(it, "revisit") +
+          '<div class="cpx-notes"><p class="cpx-lab">Notes · ' + esc(it.label) + '</p><textarea class="cpx-ta" data-note="' + esc(it.id) +
+          '" rows="3">' + esc(noteOf(it)) + "</textarea></div>";
+        ctx.foot = '<div class="row"><button type="button" class="cpx-btn" data-rv-back>Back to queue</button>' +
+          '<button type="button" class="cpx-btn amber" data-rv-keep>Still an issue</button></div>' +
+          '<button type="button" class="cpx-go green" data-rv-ok>Confirm signal OK</button>';
         return;
       }
-      advanceFrom(item);
+      S.revisitId = null;
     }
-    render();
+    ctx.title = "Revisit queue";
+    ctx.body = '<div class="cpx-count"><span>Flagged inputs to re-sweep</span><b>' + q.length + " remaining</b></div>" +
+      (q.length ? q.map(rvRow).join("") : '<p class="cpx-empty">Nothing flagged. Good line check.</p>');
+    ctx.foot = q.length
+      ? '<button type="button" class="cpx-go" data-rv-begin>Begin revisit cycle</button>' +
+        '<button type="button" class="cpx-btn" data-stage="ready">Move on with ' + q.length + " open</button>"
+      : '<button type="button" class="cpx-go" data-stage="ready">Continue to system ready</button>';
   }
 
-  function doNext(item) {
-    if (!item) return;
-    if (item.is_marker) {
-      var phases = phasesForSeat();
-      var idx = phases.indexOf(S.phase);
-      if (idx < phases.length - 1) {
-        S.phase = phases[idx + 1];
-        S.focusId = null;
-      }
-      render();
-      return;
+  function renderReady(ctx) {
+    if (S.run.line_check_started_at && !S.run.line_check_ended_at) {
+      S.run.line_check_ended_at = new Date().toISOString(); save(); stopTick();
     }
-    var st = stateOf(item);
-    if (item.blocks_run && st && st.state === "flagged") {
-      setHint("This input holds the run until it is Good or Skip", true);
-      S.focusId = item.id;
-      render();
-      return;
-    }
-    if (st && (st.state === "ok" || st.state === "skipped" || st.state === "flagged")) {
-      advanceFrom(item);
-      render();
-      return;
-    }
-    setState(item, "ok", st ? st.note : "");
-    advanceFrom(item);
-    render();
+    var list = lineInputs();
+    var ok = list.filter(function (i) { return st(i) === "ok"; }).length;
+    var sk = list.filter(function (i) { return st(i) === "skipped"; }).length;
+    var fl = list.filter(function (i) { return st(i) === "flagged"; }).length;
+    var by = list.filter(function (i) { return st(i) === "bypassed"; }).length;
+    var clean = !fl && !by;
+    var secs = lineCheckSeconds(), over = secs - LINE_CHECK_TARGET;
+    var at = S.run.line_check_ended_at ? new Date(S.run.line_check_ended_at) : null;
+    ctx.title = "System ready";
+    ctx.body =
+      '<div class="cpx-ready' + (clean ? "" : " warn") + '">' +
+        '<svg viewBox="0 0 44 44" fill="none" stroke="' + (clean ? "#3DF58E" : "#F5A524") + '" stroke-width="2.5"><circle cx="22" cy="22" r="19"/>' +
+        (clean ? '<path d="M14 22.5l5.5 5.5L30 17"/>' : '<path d="M22 13v12M22 30v1"/>') + "</svg>" +
+        "<h2>" + (ok + sk) + " / " + list.length + " passed</h2>" +
+        "<p>" + (clean ? "All inputs locked and cleared." : (fl + by) + " still open — carried into your reflection.") +
+        (at ? "<br>Line check finalized at " + at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + "." : "") + "</p></div>" +
+      '<div class="cpx-stats"><p class="cpx-lab">Line check summary</p>' +
+        "<div><span>Time used</span><b" + (over > 0 ? ' class="r"' : ' class="g"') + ">" + (S.run.line_check_started_at ? mmss(secs) + " of 15:00" : "—") + "</b></div>" +
+        (over > 0 ? '<div><span>Over budget</span><b class="r">' + mmss(over) + "</b></div>" : "") +
+        '<div><span>Good</span><b class="g">' + ok + "</b></div>" +
+        "<div><span>Skipped</span><b>" + sk + "</b></div>" +
+        '<div><span>Still flagged</span><b class="a">' + fl + "</b></div>" +
+        '<div><span>Bypassed</span><b class="r">' + by + "</b></div></div>" +
+      (clean ? "" : revisitList().map(rvRow).join(""));
+    ctx.foot = (clean ? "" : '<button type="button" class="cpx-btn" data-stage="revisit">Back to revisit queue</button>') +
+      '<button type="button" class="cpx-go" data-stage="rehearsal">Commence rehearsal run</button>';
+  }
+
+  function renderChecklist(ctx) {
+    var s = S.stage;
+    ctx.title = s === "prep" ? (S.seat === "foh" ? "Console prep" : "Monitor prep") : STAGE_TITLE[s];
+    ctx.body = stageItems(s).map(checkItemHTML).join("");
+    var i = stages().indexOf(s), prev = stages()[i - 1], nextS = stages()[i + 1];
+    var back = prev ? '<button type="button" class="cpx-btn" data-stage="' + prev + '">Back</button>' : '<button type="button" class="cpx-btn" data-exit>Exit</button>';
+    var fwd;
+    if (s === "pre_service") fwd = '<button type="button" class="cpx-go" id="cpFinish">Finish &amp; reflect</button>';
+    else if (s === "huddle") fwd = '<button type="button" class="cpx-go" data-stage="line_check">Huddle done</button>';
+    else if (s === "rehearsal") fwd = '<button type="button" class="cpx-go" data-stage="pre_service">Rehearsal done</button>';
+    else fwd = '<button type="button" class="cpx-go" data-stage="' + nextS + '">Confirm prep</button>';
+    ctx.foot = '<div class="row">' + back + fwd + "</div>";
+  }
+
+  function renderStage(ctx) {
+    ctx.split = false;
+    if (S.stage === "line_check") return renderLineCheck(ctx);
+    if (S.stage === "revisit") return renderRevisit(ctx);
+    if (S.stage === "ready") return renderReady(ctx);
+    return renderChecklist(ctx);
+  }
+
+  function sheetHTML() {
+    var cur = focusItem();
+    return '<div class="cpx-sheet-in"><header><p class="cpx-lab" style="margin:0">Line check · ' + lineInputs().length + ' inputs</p>' +
+      '<button type="button" class="cpx-exit" data-sheet-close>Close</button></header>' +
+      lineInputs().map(function (i, n) {
+        var s = st(i);
+        return '<button type="button" class="cpx-li' + (cur && cur.id === i.id ? " cur" : "") + '" data-jump="' + esc(i.id) + '">' +
+          '<i class="' + (s || "") + '"></i><span style="font-family:var(--mono);color:var(--cx-dim);font-size:12px">' +
+          String(n + 1).padStart(2, "0") + "</span>" + esc(i.label) + (i.blocks_run ? ' <span class="cpx-pill hold" style="margin-left:auto">Holds</span>' : "") + "</button>";
+      }).join("") + "</div>";
+  }
+
+  function goStage(s) {
+    S.stage = s; S.revisitId = null; S.sheet = false;
+    if (s === "line_check" && S.run && !S.run.line_check_ended_at && S.run.line_check_started_at) startTick();
   }
 
   function render() {
     var page = $("#p-companion"); if (!page) return;
-
     if (!S.run) { renderSetup(); return; }
+    if (stages().indexOf(S.stage) < 0) S.stage = "prep";
 
-    var phases = phasesForSeat();
-    if (!S.phase || phases.indexOf(S.phase) < 0) S.phase = phases[0];
+    var ctx = { title: "", body: "", foot: "", split: false };
+    renderStage(ctx);
 
-    var nav = phases.map(function (p) {
-      var c = counts(p);
-      return '<button type="button" class="cpph' + (p === S.phase ? " on" : "") +
-        '" data-phase="' + p + '">' + esc(PHASE_LABEL[p]) +
-        (c.total ? "<i>" + c.done + "/" + c.total + "</i>" : "") + "</button>";
-    }).join("");
-
-    var bodyInner, bl, blockHTML = "";
-    if (S.phase === "line_check") {
-      var list = visible(S.phase);
-      var cur = focusItem();
-      if (cur) S.focusId = cur.id;
-      bl = blockers();
-      blockHTML = bl.length
-        ? '<div class="cpblock"><b>' + bl.length + " input" + (bl.length > 1 ? "s" : "") +
-          " still holding the run</b><span>" +
-          bl.map(function (x) { return esc(x.label); }).join(", ") +
-          " &mdash; everything else can come back to it, these cannot.</span></div>"
-        : "";
-      bodyInner = '<div class="cpass">' +
-        trailHTML(list, cur) +
-        blockHTML +
-        nowHTML(cur, list) +
-      "</div>";
-    } else {
-      var rows = visible(S.phase).map(function (i) {
-        return i.is_marker ? markerHTML(i) : itemHTML(i);
-      }).join("");
-      bodyInner = '<div class="cplist">' + rows + "</div>";
-    }
-
-    var idx = phases.indexOf(S.phase);
-    $("#cpBody").innerHTML =
-      bodyInner +
-      '<div class="cpnav">' +
-        (idx > 0 ? '<button type="button" class="btn" data-go="' + phases[idx - 1] + '">&larr; ' + esc(PHASE_LABEL[phases[idx - 1]]) + "</button>" : "<span></span>") +
-        (idx < phases.length - 1
-          ? '<button type="button" class="btn primary" data-go="' + phases[idx + 1] + '">' + esc(PHASE_LABEL[phases[idx + 1]]) + " &rarr;</button>"
-          : '<button type="button" class="btn primary" id="cpFinish">Finish this service</button>') +
-      "</div>";
-
-    $("#cpPhases").innerHTML = nav;
-    $("#cpMeta").innerHTML =
-      '<span class="cpseat ' + S.seat + '">' + (S.seat === "foh" ? "FOH" : "MONS") + "</span>" +
-      "<b>" + esc(S.run.service_date) + "</b>" +
-      (S.run.service_label ? "<span>" + esc(S.run.service_label) + "</span>" : "") +
-      (S.preview ? '<span class="cppreview-tag">Preview · not saved</span>' : "");
     $("#cpSetup").hidden = true;
     $("#cpRun").hidden = false;
-    page.classList.add("running");
-    page.classList.toggle("linepass", S.phase === "line_check");
-    paintClock();
+    document.body.classList.add("cpx-full");
+    $("#cpHead").innerHTML = headHTML(ctx.title);
+    $("#cpSide").innerHTML = sideHTML();
+    var body = $("#cpBody");
+    body.className = "cpx-body" + (ctx.split ? " split" : "");
+    body.innerHTML = ctx.split ? ctx.body : '<div class="cpx-col">' + ctx.body + "</div>";
+    $("#cpFoot").innerHTML = ctx.foot;
+    var sh = $("#cpSheet");
+    sh.hidden = !S.sheet;
+    sh.innerHTML = S.sheet ? sheetHTML() : "";
   }
 
-  /* This card is deliberately NOT a data-auth element. The header painter
-     un-hides every [data-auth] node on each auth repaint, which fought
-     render() and left the setup card stacked above a running checklist. One
-     owner per element. */
+  /* ---------- setup ---------- */
+
+  /* WED and SUN are the primary choices. Each shows its upcoming date;
+     today wins on a service day. On any other day the sooner one is
+     preselected. "Other date" keeps a picker for special services. */
+  function defaultDate() {
+    var w = nextDow(3), s = nextDow(0);
+    return w < s ? w : s;
+  }
+  function paintDays() {
+    var w = nextDow(3), s = nextDow(0), t = todayISO();
+    if (!S.date) S.date = defaultDate();
+    var custom = S.date !== w && S.date !== s;
+    $("#cpDays").innerHTML = [["WED", w], ["SUN", s]].map(function (d) {
+      return '<button type="button" class="cpx-day" data-day="' + d[1] + '" aria-pressed="' + (S.date === d[1]) + '">' +
+        "<b>" + d[0] + "</b><small>" + esc(shortDate(d[1]).slice(4)) + "</small>" + (d[1] === t ? "<em>TODAY</em>" : "") + "</button>";
+    }).join("");
+    var di = $("#cpDate");
+    if (custom) { di.hidden = false; di.value = S.date; }
+  }
+  function paintSeats() {
+    Array.prototype.forEach.call(document.querySelectorAll("#cpSetup [data-seat]"), function (b) {
+      b.setAttribute("aria-pressed", b.dataset.seat === S.seat ? "true" : "false");
+    });
+  }
+  var lookupSeq = 0;
+  /* Tell the engineer, before they tap, whether this is a fresh run or a
+     pick-up. Starting again on the same date and seat resumes. */
+  function paintStartLabel() {
+    var btn = $("#cpStart"); if (!btn) return;
+    btn.disabled = !myId();
+    btn.textContent = "Start run";
+    if (!myId() || !S.date) return;
+    var seq = ++lookupSeq;
+    findRun(S.date, S.seat).then(function (r) {
+      if (seq !== lookupSeq || !r) return;
+      btn.textContent = r.completed_at ? "Open finished run" : "Resume run";
+    }).catch(function () {});
+  }
+
   function renderSetup() {
-    var pg = $("#p-companion");
-    if (pg) {
-      pg.classList.remove("running");
-      pg.classList.remove("linepass");
-    }
+    document.body.classList.remove("cpx-full");
     $("#cpRun").hidden = true;
     $("#cpSetup").hidden = false;
-    var d = $("#cpDate"); if (d && !d.value) d.value = todayISO();
-    var start = $("#cpStart");
-    if (start) start.disabled = !myId();
+    paintDays(); paintSeats(); paintStartLabel();
     stopTick();
+    checkReflectionOwed();
+  }
+
+  /* ---------- the reflection that is owed ---------- */
+
+  function flagLines(items, states) {
+    return items.filter(function (i) {
+      var x = states[i.id]; return x && (x.state === "flagged" || x.state === "bypassed" || (x.note && i.phase === "line_check"));
+    }).map(function (i) {
+      var x = states[i.id], tag = x.state === "bypassed" ? " (BYPASSED" + (x.reason ? ": " + x.reason : "") + ")" :
+        x.state === "flagged" ? " (flagged)" : "";
+      return "- " + i.label + tag + (x.note ? ": " + x.note : "");
+    });
+  }
+  function handoffFor(run) {
+    var lines = flagLines(S.items || [], run.item_states || {});
+    if (run.notes) lines.push("", "Rehearsal notes:", run.notes);
+    try {
+      sessionStorage.setItem("awaken.companion.handoff", JSON.stringify({
+        date: run.service_date,
+        label: run.service_label || (dayName(run.service_date) + " service"),
+        seat: run.seat, flags: lines
+      }));
+    } catch (e) {}
+  }
+
+  var owedRun = null;
+  /* A finished run in the last week with no reflection for its date. */
+  function checkReflectionOwed() {
+    var box = $("#cpReflect"); if (!box) return;
+    var id = myId();
+    if (!id) { box.hidden = true; return; }
+    var since = new Date(); since.setDate(since.getDate() - 7);
+    sb.from("service_companion_runs").select("*")
+      .eq("profile_id", id).not("completed_at", "is", null).gte("service_date", iso(since))
+      .order("service_date", { ascending: false }).limit(3)
+      .then(function (r) {
+        if (r.error || !r.data || !r.data.length) { box.hidden = true; return null; }
+        var runs = r.data;
+        return sb.from("reflections").select("served_on").eq("profile_id", id)
+          .in("served_on", runs.map(function (x) { return x.service_date; }))
+          .then(function (q) {
+            if (q.error) { box.hidden = true; return; }
+            var have = (q.data || []).map(function (x) { return x.served_on; });
+            owedRun = runs.filter(function (x) { return have.indexOf(x.service_date) < 0; })[0] || null;
+            if (!owedRun) { box.hidden = true; return; }
+            var when = owedRun.service_date === todayISO() ? "Today's" : dayName(owedRun.service_date) + "'s";
+            box.innerHTML = "<b>" + esc(when) + " reflection is waiting</b><p>Your " + (owedRun.seat === "foh" ? "FOH" : "Mons") +
+              " run on " + esc(shortDate(owedRun.service_date)) + " is finished. Your line check notes are ready to drop in.</p>" +
+              '<button type="button" class="cpx-go green" data-reflect>Write the reflection</button>';
+            box.hidden = false;
+          });
+      }).catch(function () { box.hidden = true; });
+  }
+  function openOwedReflection() {
+    if (!owedRun) return;
+    var go = function () { handoffFor(owedRun); location.hash = "#/reflections"; };
+    loadTemplate().then(go, go);
+  }
+
+  /* ---------- actions ---------- */
+
+  function act(value) {
+    var item = S.stage === "line_check" ? focusItem() : null;
+    if (!item) return;
+    if (value === "ok" || value === "skipped") { setState(item, value); advanceFrom(item); render(); return; }
+    if (value === "flagged") {
+      setState(item, "flagged");
+      if (item.blocks_run) { render(); return; }       /* RUN HELD */
+      advanceFrom(item); render();
+    }
+  }
+
+  var holdTimer = null;
+  function startHold(btn) {
+    if (btn.disabled) return;
+    btn.classList.add("holding");
+    holdTimer = setTimeout(function () {
+      holdTimer = null;
+      var item = heldItem(); if (!item) return;
+      var reason = ($("#cpReason").value || "").trim();
+      if (!reason) return;
+      patchState(item, { state: "bypassed", reason: reason });
+      advanceFrom(item); render();
+    }, HOLD_MS);
+  }
+  function cancelHold() {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    var b = $("#cpBypass"); if (b) b.classList.remove("holding");
+  }
+
+  function finish() {
+    if (S.run.line_check_started_at && !S.run.line_check_ended_at) S.run.line_check_ended_at = new Date().toISOString();
+    S.run.completed_at = new Date().toISOString();
+    save(true); stopTick();
+    if (S.preview) {
+      var run = S.run;
+      S.run = null; clearPreviewCache(); render();
+      setHint("Preview finished — nothing was saved. On a real run this opens your reflection with " +
+        flagLines(previewItems(), run.item_states || {}).length + " notes filled in.");
+      return;
+    }
+    handoffFor(S.run);
+    S.run = null; S.stage = null;
+    document.body.classList.remove("cpx-full");
+    location.hash = "#/reflections";
   }
 
   /* ---------- events ---------- */
+
+  function typing(e) { var t = e.target; return t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT"); }
 
   function wire() {
     var page = $("#p-companion"); if (!page || page.__wired) return;
     page.__wired = true;
 
     page.addEventListener("click", function (e) {
-      if (swallowClick) {
-        swallowClick = false;
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      var seatBtn = e.target.closest("[data-seat]");
-      if (seatBtn) {
-        S.seat = seatBtn.dataset.seat;
-        Array.prototype.forEach.call(page.querySelectorAll("[data-seat]"), function (b) {
-          b.setAttribute("aria-pressed", b === seatBtn ? "true" : "false");
-        });
-        return;
-      }
-      if (e.target.closest("[data-preview]")) { return startPreview(); }
-      if (e.target.id === "cpStart")  { return start(); }
-      if (e.target.id === "cpFinish") { return finish(); }
+      if (swallowClick) { swallowClick = false; e.preventDefault(); e.stopPropagation(); return; }
+      var t = e.target, x;
 
-      var ph = e.target.closest("[data-phase]");
-      if (ph) { S.phase = ph.dataset.phase; if (S.phase !== "line_check") S.focusId = null; render(); return; }
+      /* setup */
+      if ((x = t.closest("[data-seat]"))) { S.seat = x.dataset.seat; paintSeats(); paintStartLabel(); return; }
+      if ((x = t.closest("[data-day]"))) { S.date = x.dataset.day; $("#cpDate").hidden = true; paintDays(); paintStartLabel(); return; }
+      if (t.id === "cpOtherBtn") { var di = $("#cpDate"); di.hidden = false; di.value = S.date || todayISO(); di.focus(); return; }
+      if (t.closest("[data-preview]")) return startPreview();
+      if (t.closest("[data-reflect]")) return openOwedReflection();
+      if (t.id === "cpStart") return start();
 
-      var go = e.target.closest("[data-go]");
-      if (go) {
-        S.phase = go.dataset.go;
-        if (S.phase !== "line_check") S.focusId = null;
-        render();
-        document.getElementById("p-companion").scrollIntoView({behavior:"smooth",block:"start"});
-        return;
+      /* run */
+      if (t.closest("[data-exit]")) { exitRun(); return; }
+      if (t.id === "cpFinish") return finish();
+      if ((x = t.closest("[data-stage]"))) { goStage(x.dataset.stage); render(); $("#cpBody").scrollTop = 0; return; }
+      if (t.closest("[data-sheet]")) { S.sheet = true; render(); return; }
+      if (t.closest("[data-sheet-close]") || t.id === "cpSheet") { S.sheet = false; render(); return; }
+      if ((x = t.closest("[data-jump]"))) { S.focusId = x.dataset.jump; S.sheet = false; render(); return; }
+      if ((x = t.closest("[data-act]"))) return act(x.dataset.act);
+      if (t.closest("[data-unblock]")) { var h = heldItem(); if (h) { setState(h, "ok"); advanceFrom(h); render(); } return; }
+
+      if ((x = t.closest("[data-more]"))) {
+        var mi = itemById(x.dataset.more), ms = st(mi);
+        /* cycles: none > skipped > flagged > none */
+        setState(mi, ms === null || ms === "ok" ? "skipped" : ms === "skipped" ? "flagged" : null);
+        render(); return;
       }
-
-      var foc = e.target.closest("[data-focus]");
-      if (foc) {
-        S.focusId = foc.getAttribute("data-focus");
-        S.phase = "line_check";
-        render();
-        return;
+      if ((x = t.closest("[data-tick]"))) {
+        var ti = itemById(x.dataset.tick);
+        setState(ti, st(ti) === "ok" ? null : "ok"); render(); return;
       }
 
-      var nxt = e.target.closest("[data-next]");
-      if (nxt) {
-        var nowCard = $(".cpnow") || page.querySelector(".cpmark");
-        var nowItem = nowCard ? itemById(nowCard.dataset.id) : focusItem();
-        return doNext(nowItem);
+      if ((x = t.closest("[data-revisit]"))) { S.stage = "revisit"; S.revisitId = x.dataset.revisit; render(); return; }
+      if (t.closest("[data-rv-begin]")) { var q = revisitList(); S.revisitId = q.length ? q[0].id : null; render(); return; }
+      if (t.closest("[data-rv-back]")) { S.revisitId = null; render(); return; }
+      if (t.closest("[data-rv-ok]") || t.closest("[data-rv-keep]")) {
+        var ri = itemById(S.revisitId);
+        if (t.closest("[data-rv-ok]")) patchState(ri, { state: "ok" });
+        var rest = revisitList(), pos = rest.indexOf(ri);
+        var nxt = rest[pos + 1] || rest.filter(function (i) { return i !== ri; })[0] || null;
+        S.revisitId = nxt ? nxt.id : null;
+        render(); return;
       }
+    });
 
-      var act = e.target.closest("[data-act]");
-      if (act) {
-        var card = act.closest(".cpitem") || act.closest(".cpnow");
-        var id = card && card.dataset.id;
-        var item = id ? itemById(id) : null;
-        if (!item) return;
-        applyAct(item, act.dataset.act, false);
-        return;
-      }
+    page.addEventListener("change", function (e) {
+      if (e.target.id === "cpDate" && e.target.value) { S.date = e.target.value; paintDays(); paintStartLabel(); }
     });
 
     page.addEventListener("input", function (e) {
       if (e.target.id === "cpNotes") { S.run.notes = e.target.value; save(); return; }
-      var card = e.target.closest(".cpi-note");
-      if (card) {
-        var host = card.closest(".cpitem") || card.closest(".cpnow");
-        var id = host && host.dataset.id;
-        var item = id ? itemById(id) : null;
-        if (!item) return;
-        var st = stateOf(item);
-        setState(item, st ? st.state : "flagged", e.target.value);
+      if (e.target.id === "cpReason") {
+        var h = heldItem(); if (h) patchState(h, { reason: e.target.value });
+        var b = $("#cpBypass"); if (b) b.disabled = !e.target.value.trim();
+        return;
       }
+      var n = e.target.getAttribute && e.target.getAttribute("data-note");
+      if (n) patchState(itemById(n), { note: e.target.value });
+    });
+
+    page.addEventListener("pointerdown", function (e) { var b = e.target.closest && e.target.closest("#cpBypass"); if (b) startHold(b); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) {
+      page.addEventListener(ev, function (e) { if (holdTimer && (ev !== "pointerleave" || e.target.id === "cpBypass")) cancelHold(); }, true);
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (!S.run || !onCompanion() || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (S.stage !== "line_check" || heldItem()) return;
+      var k = e.key.toLowerCase();
+      if (k === " ") { e.preventDefault(); act("ok"); }
+      else if (k === "f") act("flagged");
+      else if (k === "s") act("skipped");
     });
 
     wireSwipe(page);
   }
 
   function wireSwipe(page) {
-    var swipe = { on: false, x0: 0, y0: 0, dx: 0, axis: null, card: null, pid: null };
-
-    function targetCard(e) {
-      var t = e.target;
-      if (!t.closest) return null;
-      if (t.closest("button, textarea, a, input, .cptrail, .cppath, .cpnow-act, .cpmark")) return null;
-      return t.closest(".cpnow");
-    }
-    function resetCard(card) {
-      if (!card) return;
-      card.style.transform = "";
-      card.classList.remove("swipe-ok", "swipe-flag", "swiping");
-    }
-    function end(e) {
-      if (!swipe.on) return;
-      var card = swipe.card, dx = swipe.dx, item;
-      swipe.on = false;
-      swipe.card = null;
-      swipe.axis = null;
-      if (e && swipe.pid != null) {
-        try { page.releasePointerCapture(swipe.pid); } catch (err) {}
-      }
-      swipe.pid = null;
-      resetCard(card);
-      if (!card || Math.abs(dx) < SWIPE_PX) return;
-      swallowClick = true;
-      item = itemById(card.dataset.id);
-      if (!item) return;
-      if (dx > 0) doNext(item);
-      else applyAct(item, "flagged", true);
-    }
-
+    var sw = { on: false, x0: 0, y0: 0, dx: 0, axis: null, card: null };
+    function reset(c) { if (c) { c.style.transform = ""; c.classList.remove("swipe-ok", "swipe-flag", "swiping"); } }
     page.addEventListener("pointerdown", function (e) {
-      if (S.phase !== "line_check") return;
+      if (!S.run || S.stage !== "line_check" || heldItem()) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      var card = targetCard(e);
-      if (!card) return;
-      swipe.on = true;
-      swipe.x0 = e.clientX;
-      swipe.y0 = e.clientY;
-      swipe.dx = 0;
-      swipe.axis = null;
-      swipe.card = card;
-      swipe.pid = e.pointerId;
-      try { page.setPointerCapture(e.pointerId); } catch (err) {}
+      var c = e.target.closest && e.target.closest(".cpx-now");
+      if (!c || e.target.closest("button,textarea,a,input")) return;
+      sw.on = true; sw.x0 = e.clientX; sw.y0 = e.clientY; sw.dx = 0; sw.axis = null; sw.card = c;
     });
     page.addEventListener("pointermove", function (e) {
-      if (!swipe.on || !swipe.card) return;
-      var dx = e.clientX - swipe.x0, dy = e.clientY - swipe.y0;
-      if (!swipe.axis) {
+      if (!sw.on) return;
+      var dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
+      if (!sw.axis) {
         if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
-        swipe.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? "x" : "y";
-        if (swipe.axis === "y") { swipe.on = false; resetCard(swipe.card); swipe.card = null; return; }
-        swipe.card.classList.add("swiping");
+        sw.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? "x" : "y";
+        if (sw.axis === "y") { sw.on = false; reset(sw.card); return; }
+        sw.card.classList.add("swiping");
       }
-      if (swipe.axis !== "x") return;
       if (e.cancelable) e.preventDefault();
-      swipe.dx = dx;
-      var x = Math.max(-160, Math.min(160, dx));
-      swipe.card.style.transform = "translateX(" + x + "px)";
-      swipe.card.classList.toggle("swipe-ok", x > 36);
-      swipe.card.classList.toggle("swipe-flag", x < -36);
+      sw.dx = dx;
+      var xx = Math.max(-160, Math.min(160, dx));
+      sw.card.style.transform = "translateX(" + xx + "px)";
+      sw.card.classList.toggle("swipe-ok", xx > 36);
+      sw.card.classList.toggle("swipe-flag", xx < -36);
     }, { passive: false });
+    function end() {
+      if (!sw.on) return;
+      sw.on = false; reset(sw.card);
+      if (Math.abs(sw.dx) < SWIPE_PX) return;
+      swallowClick = true;
+      act(sw.dx > 0 ? "ok" : "flagged");
+    }
     page.addEventListener("pointerup", end);
     page.addEventListener("pointercancel", end);
   }
 
+  function exitRun() {
+    if (S.dirty) save(true);
+    var was = S.preview;
+    S.run = null; S.stage = null; S.sheet = false;
+    if (was) clearPreviewCache();
+    render();
+  }
+
   function clearPreviewCache() {
     if (S.items && S.items[0] && S.items[0].template_id === "preview") S.items = null;
-    S.preview = false;
-    S.focusId = null;
+    S.preview = false; S.focusId = null;
+  }
+
+  /* Pick up where the run left off: the first stage that is not done. */
+  function resumeStage() {
+    var list = stages();
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i];
+      if (s === "huddle" || s === "rehearsal") continue;
+      if (s === "ready") { if (!S.run.line_check_ended_at) return "ready"; continue; }
+      if (!stageDone(s)) {
+        if (s === "prep" && S.run.line_check_started_at) continue;
+        return s;
+      }
+    }
+    return "pre_service";
   }
 
   function start() {
     if (!myId()) { setHint("Sign in first", true); return; }
     clearPreviewCache();
-    var date = $("#cpDate").value || todayISO();
-    var label = ($("#cpLabel").value || "").trim().slice(0, 80);
-    setHint("Starting...");
+    var date = S.date || todayISO();
+    setHint("Starting…");
     loadTemplate()
       .then(function () { return findRun(date, S.seat); })
-      .then(function (r) { return r || createRun(date, S.seat, label); })
+      .then(function (r) { return r || createRun(date, S.seat, dayName(date) + " service"); })
       .then(function (r) {
-        S.run = r; S.phase = null; S.focusId = null;
+        S.run = r; S.focusId = null; S.stage = null; S.saveMsg = ""; S.saveBad = false;
+        S.stage = r.line_check_started_at || Object.keys(r.item_states || {}).length ? resumeStage() : "prep";
         if (r.line_check_started_at && !r.line_check_ended_at) startTick();
         setHint("");
         render();
       })
-      .catch(function (err) {
-        setHint(err && err.message ? err.message : "Could not start", true);
-      });
+      .catch(function (err) { setHint(err && err.message ? err.message : "Could not start", true); });
   }
 
   function startPreview() {
@@ -858,77 +976,13 @@
     S.items = previewItems();
     S.focusId = null;
     S.run = {
-      id: "preview",
-      seat: S.seat,
-      service_date: ($("#cpDate") && $("#cpDate").value) || todayISO(),
-      service_label: "Preview pass",
-      item_states: {},
-      notes: "",
-      line_check_started_at: null,
-      line_check_ended_at: null,
-      completed_at: null
+      id: "preview", seat: S.seat, service_date: S.date || todayISO(),
+      service_label: "Preview pass", item_states: {}, notes: "",
+      line_check_started_at: null, line_check_ended_at: null, completed_at: null
     };
-    S.phase = "line_check";
-    setHint("Preview pass — nothing is saved");
+    S.stage = "prep"; S.saveMsg = "Preview · not saved";
+    setHint("");
     render();
-  }
-
-  function finish() {
-    if (!S.run.line_check_ended_at && S.run.line_check_started_at)
-      S.run.line_check_ended_at = new Date().toISOString();
-    S.run.completed_at = new Date().toISOString();
-    save(true);
-    stopTick();
-
-    var f = flagged(), secs = lineCheckSeconds();
-    var lines = f.map(function (x) {
-      var n = stateOf(x).note;
-      return "- " + x.label + (n ? ": " + n : "");
-    });
-    /* Handed to the reflection rather than retyped. The blank page is the
-       reason journals die; two honest technical notes written at 5:20 are
-       something to react to at 12:15. */
-    if (!S.preview) {
-      try {
-        sessionStorage.setItem("awaken.companion.handoff", JSON.stringify({
-          date: S.run.service_date,
-          label: S.run.service_label || "",
-          seat: S.seat,
-          flags: lines
-        }));
-      } catch (e) {}
-    }
-
-    var page = $("#p-companion");
-    if (page) page.classList.remove("linepass");
-
-    $("#cpBody").innerHTML =
-      '<div class="cpdone">' +
-        "<h3>Run complete</h3>" +
-        (S.run.line_check_started_at
-          ? '<p class="cpsum">Line check took <b>' + mmss(secs) + "</b> against a 15:00 target" +
-            (secs > LINE_CHECK_TARGET ? " &mdash; over by " + mmss(secs - LINE_CHECK_TARGET) : "") + ".</p>"
-          : "") +
-        (lines.length
-          ? '<p class="cpsum">' + lines.length + ' flagged:</p><ul class="cpflags">' +
-            f.map(function (x) {
-              var n = stateOf(x).note;
-              return '<li><span class="cpcode">' + esc(x.code) + "</span> " + esc(x.label) +
-                     (n ? " <i>" + esc(n) + "</i>" : "") + "</li>";
-            }).join("") + "</ul>"
-          : '<p class="cpsum">Nothing flagged.</p>') +
-        '<div class="foot">' +
-          (S.preview
-            ? ""
-            : '<a class="btn primary" href="#/reflections">Write the reflection &rarr;</a>') +
-          '<button type="button" class="btn" id="cpAnother">Start another seat</button>' +
-        "</div>" +
-      "</div>";
-    $("#cpAnother").onclick = function () {
-      S.run = null;
-      clearPreviewCache();
-      render();
-    };
   }
 
   /* When the reflection form opens after a finished run, fill the service
@@ -974,26 +1028,20 @@
     return location.hash.replace(/^#/, "").split(/[#?&]/)[0] === "/companion";
   }
 
-  /* Supabase restores the session from localStorage asynchronously. Asking
-     for the template before that lands sends the request as anon, RLS
-     correctly returns nothing, and the page would sit there claiming there
-     is no checklist. So: only fetch once there is a signed-in identity, and
-     let onChange bring us back when it arrives. */
+  /* Supabase restores the session asynchronously; only fetch once there
+     is a signed-in identity, and let onChange bring us back. */
   function ensureLoaded() {
-    if (!onCompanion()) return;
+    if (!onCompanion()) { document.body.classList.remove("cpx-full"); return; }
     wire();
-    if (S.run && S.preview) { render(); return; }
-    if (!myId()) { renderSetup(); return; }
-    if (S.items && !S.preview) { render(); return; }
     if (S.run) { render(); return; }
     renderSetup();
-    loadTemplate().then(function () { /* template warm; wait for Start */ }).catch(function (e) {
+    if (myId() && !S.items) loadTemplate().catch(function (e) {
       setHint("Could not load the checklist: " + (e.message || e), true);
     });
   }
 
   function onRoute() {
-    if (onCompanion()) ensureLoaded();
+    ensureLoaded();
     if (location.hash.replace(/^#/, "").split(/[#?&]/)[0] === "/reflections")
       setTimeout(handoffToReflection, 60);
   }
@@ -1001,7 +1049,7 @@
   function init() {
     wire();
     window.addEventListener("hashchange", onRoute);
-    if (D.onChange) D.onChange(function () { ensureLoaded(); });
+    if (D.onChange) D.onChange(function () { if (onCompanion() && !S.run) renderSetup(); else ensureLoaded(); });
     onRoute();
   }
   if (document.readyState === "loading")
