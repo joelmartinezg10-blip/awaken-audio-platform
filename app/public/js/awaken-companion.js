@@ -590,6 +590,7 @@
   function renderChecklist(ctx) {
     var s = S.stage;
     ctx.title = s === "prep" ? (S.seat === "foh" ? "Console prep" : "Monitor prep") : STAGE_TITLE[s];
+    ctx.grid = stageItems(s).filter(function (i) { return !i.is_marker; }).length > 4;
     ctx.body = stageItems(s).map(checkItemHTML).join("");
     var i = stages().indexOf(s), prev = stages()[i - 1], nextS = stages()[i + 1];
     var back = prev ? '<button type="button" class="cpx-btn" data-stage="' + prev + '">Back</button>' : '<button type="button" class="cpx-btn" data-exit>Exit</button>';
@@ -641,7 +642,7 @@
     $("#cpSide").innerHTML = sideHTML();
     var body = $("#cpBody");
     body.className = "cpx-body" + (ctx.split ? " split" : "");
-    body.innerHTML = ctx.split ? ctx.body : '<div class="cpx-col">' + ctx.body + "</div>";
+    body.innerHTML = ctx.split ? ctx.body : '<div class="cpx-col' + (ctx.grid ? " grid" : "") + '">' + ctx.body + "</div>";
     $("#cpFoot").innerHTML = ctx.foot;
     var sh = $("#cpSheet");
     sh.hidden = !S.sheet;
