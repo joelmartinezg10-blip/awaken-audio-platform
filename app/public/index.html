@@ -3002,31 +3002,33 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     <!-- Setup: stays inside the normal site. -->
     <div class="cpx-setup" id="cpSetup" hidden>
       <div class="cpx-top"><span class="cpx-brand">Awaken Audio</span><span class="cpx-live"><i></i>Live</span></div>
-      <h1 class="cpx-title">Service Companion</h1>
-      <p class="cpx-sub">Every minute and every note counts</p>
-      <div class="cpx-rule"></div>
-
-      <div class="cpx-reflect" id="cpReflect" hidden></div>
-
-      <div class="cpx-budget idle"><span>Line check budget</span><b>15:00</b><small>Starts on the first input of line check</small></div>
-
-      <div class="cpx-panel">
-        <p class="cpx-lab">Select work date</p>
-        <div class="cpx-days" id="cpDays"></div>
-        <button type="button" class="cpx-link" id="cpOtherBtn">Other date</button>
-        <input type="date" id="cpDate" class="cpx-date" hidden>
+      <div class="cpx-setup-l">
+        <h1 class="cpx-title">Service Companion</h1>
+        <p class="cpx-sub">Every minute and every note counts</p>
+        <div class="cpx-rule"></div>
+        <div class="cpx-budget idle"><span>Line check budget</span><b>15:00</b><small>Starts on the first input of line check</small></div>
+        <p class="cpx-signedout" data-auth="out">Sign in to start a saved run. You can walk a preview pass first &mdash; nothing is saved.</p>
       </div>
+      <div class="cpx-setup-r">
+        <div class="cpx-reflect" id="cpReflect" hidden></div>
 
-      <div class="cpx-panel">
-        <p class="cpx-lab">Choose operational seat</p>
-        <button type="button" class="cpx-seat foh" data-seat="foh" aria-pressed="true"><i></i><span><b>FOH Engineer</b><small>Front of House checklist &amp; line check</small></span></button>
-        <button type="button" class="cpx-seat mons" data-seat="mons" aria-pressed="false"><i></i><span><b>Mons Engineer</b><small>Monitor world mixing &amp; stage check</small></span></button>
+        <div class="cpx-panel">
+          <p class="cpx-lab">Select work date</p>
+          <div class="cpx-days" id="cpDays"></div>
+          <button type="button" class="cpx-link" id="cpOtherBtn">Other date</button>
+          <input type="date" id="cpDate" class="cpx-date" hidden>
+        </div>
+
+        <div class="cpx-panel">
+          <p class="cpx-lab">Choose operational seat</p>
+          <button type="button" class="cpx-seat foh" data-seat="foh" aria-pressed="true"><i></i><span><b>FOH Engineer</b><small>Front of House checklist &amp; line check</small></span></button>
+          <button type="button" class="cpx-seat mons" data-seat="mons" aria-pressed="false"><i></i><span><b>Mons Engineer</b><small>Monitor world mixing &amp; stage check</small></span></button>
+        </div>
+
+        <button type="button" class="cpx-go" id="cpStart">Start run</button>
+        <button type="button" class="cpx-ghost" data-preview>Walk a preview pass</button>
+        <p class="cpx-hint" id="cpHint"></p>
       </div>
-
-      <p class="cpx-signedout" data-auth="out">Sign in to start a saved run. You can walk a preview pass first &mdash; nothing is saved.</p>
-      <button type="button" class="cpx-go" id="cpStart">Start run</button>
-      <button type="button" class="cpx-ghost" data-preview>Walk a preview pass</button>
-      <p class="cpx-hint" id="cpHint"></p>
     </div>
 
     <!-- A run: full screen. -->
@@ -6419,6 +6421,28 @@ body.cpx-full header.nav,body.cpx-full > footer{display:none!important}
   #p-companion .sd-nav button em{margin-left:auto;font-style:normal;background:var(--cx-pink);color:#0A0A0C;border-radius:4px;padding:1px 6px;font-size:10px}
   #p-companion .sd-foot{margin-top:auto;border-top:1px solid var(--cx-line);padding-top:14px;font-family:var(--mono);font-size:clamp(11px,.75vw,14px);color:var(--cx-muted)}
   #p-companion .sd-foot b{display:block;color:var(--white);font-size:clamp(14px,1vw,18px);margin-top:3px;font-weight:500}
+}
+@media (min-width:1024px){
+  /* Setup on a laptop: two columns, bigger type, uses the page width. */
+  #p-companion .cpx{max-width:1180px;padding:44px 32px 64px}
+  #p-companion .cpx-setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(420px,1fr);
+    gap:clamp(30px,3.4vw,64px);align-items:start}
+  #p-companion .cpx-setup>.cpx-top{grid-column:1/-1}
+  #p-companion .cpx-setup-r{display:flex;flex-direction:column;gap:16px}
+  #p-companion .cpx-setup .cpx-title{font-size:clamp(40px,4.2vw,72px);margin:14px 0 8px}
+  #p-companion .cpx-setup .cpx-sub{font-size:13px}
+  #p-companion .cpx-setup .cpx-budget{padding:22px 26px;margin:22px 0 0}
+  #p-companion .cpx-setup .cpx-budget b{font-size:48px}
+  #p-companion .cpx-setup .cpx-signedout{font-size:13px;line-height:1.7;margin-top:18px}
+  #p-companion .cpx-setup .cpx-panel{margin:0;padding:22px}
+  #p-companion .cpx-setup .cpx-reflect{margin:0}
+  #p-companion .cpx-setup .cpx-day{min-height:88px}
+  #p-companion .cpx-setup .cpx-day b{font-size:26px}
+  #p-companion .cpx-setup .cpx-seat{min-height:86px;padding:16px 20px}
+  #p-companion .cpx-setup .cpx-seat b{font-size:20px}
+  #p-companion .cpx-setup .cpx-go{min-height:74px;font-size:20px}
+  #p-companion .cpx-setup .cpx-ghost{margin:0;min-height:56px}
+  #p-companion .cpx-setup .cpx-hint{text-align:left;margin:0}
 }
 #p-companion .cpx-desk-controls{display:none}
 
