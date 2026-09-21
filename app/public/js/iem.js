@@ -29,13 +29,16 @@ var CH = [
   ["Pad Trax","TRACKS",1],["Vox Trax","TRACKS",1],["Synth Bass","TRACKS",0]
 ];
 var BANKS=["DRUMS","BAND","VOX","COMMS","TRACKS"];
+/* Plate colours from the redesign. Still the dLive scheme \u2014 drums red,
+   band green, bass orange, vox pink, comms white, tracks blue \u2014 but
+   desaturated to sit on the cool slate ground instead of glowing off it. */
 var PLATE={
-  red:    ["#FF6E5C","#F02B1E","#A31007"],
-  green:  ["#4FE88C","#0FD05F","#08863B"],
-  orange: ["#FFAE47","#FF8A0A","#B85A00"],
-  pink:   ["#FF74C4","#FF1E9B","#B00062"],
-  white:  ["#FFFFFF","#F2F0EB","#C4C0B6"],
-  blue:   ["#54B0FF","#0B7BFF","#0448AE"]
+  red:    ["#ef7a70","#e2574c","#a8362d"],
+  green:  ["#74c78e","#4caf6e","#2f7a4a"],
+  orange: ["#f0b268","#e0a33c","#a6721f"],
+  pink:   ["#ef92c0","#e56aa8","#a84174"],
+  white:  ["#eef2f7","#d7dee8","#a8b2c0"],
+  blue:   ["#7cbcff","#54b0ff","#2a6fb8"]
 };
 function plateFor(s2){
   if(s2.name==="Bass") return "orange";
@@ -416,13 +419,48 @@ function buildWall(){
   wall.innerHTML="";
 
   BANKS.forEach(function(b){
-    var bank=document.createElement("div"); bank.className="bank";
+    var bank=document.createElement("div"); bank.className="bank"; bank.dataset.bank=b;
     var mk=document.createElement("div"); mk.className="bankmark"; mk.textContent=b;
     bank.appendChild(mk);
     st.forEach(function(s){ if(s.bank===b) bank.appendChild(buildChan(s)); });
     wall.appendChild(bank);
   });
   wall.appendChild(buildMasterStrip());
+  buildBankNav();
+  applyBank();
+}
+
+/* ===== Bank nav =====
+   29 strips will not fit on any screen worth designing for, so the wall shows
+   one bank at a time. "All" is still there for anyone who wants the full board. */
+var BANKC={DRUMS:"#e2574c",BAND:"#4caf6e",VOX:"#e56aa8",COMMS:"#d7dee8",TRACKS:"#54b0ff"};
+var curBank="DRUMS";
+function buildBankNav(){
+  var nav=document.getElementById("banknav");
+  if(!nav) return;
+  nav.hidden=false; nav.innerHTML="";
+  ["ALL"].concat(BANKS).forEach(function(b){
+    var btn=document.createElement("button");
+    btn.className="bkbtn"; btn.dataset.bank=b;
+    btn.style.setProperty("--bkc", b==="ALL" ? "#4da3ff" : BANKC[b]);
+    btn.innerHTML='<i></i><span>'+b+'</span>';
+    btn.onclick=function(){ curBank=b; applyBank(); };
+    nav.appendChild(btn);
+  });
+  var note=document.createElement("span");
+  note.className="bknote";
+  note.textContent=CH.length+" channels \u00b7 tap a bank";
+  nav.appendChild(note);
+}
+function applyBank(){
+  var nav=document.getElementById("banknav");
+  if(nav) Array.prototype.forEach.call(nav.querySelectorAll(".bkbtn"),function(b){
+    b.classList.toggle("on", b.dataset.bank===curBank);
+  });
+  Array.prototype.forEach.call(wall.querySelectorAll(".bank"),function(b){
+    b.hidden = !(curBank==="ALL" || b.dataset.bank===curBank);
+  });
+  wall.scrollLeft=0;
 }
 function buildMasterStrip(){
   var host=document.createElement("div"); host.className="masterch";
@@ -464,7 +502,10 @@ function buildChan(s){
   nm.style.setProperty("--cc-lt",cc[0]);
   nm.style.setProperty("--cc",cc[1]);
   nm.style.setProperty("--cc-dk",cc[2]);
-  nm.innerHTML='<div class="n">Ip '+(i+1)+'</div><div class="t'+(s.stereo?" st":"")+'">'+s.name+'</div>';
+  /* the strip owns the colour too, so the fader cap line can pick it up */
+  el.style.setProperty("--cc",cc[1]);
+  /* Console 2.0 plate: channel name on top, its bank underneath */
+  nm.innerHTML='<div class="t'+(s.stereo?" st":"")+'">'+s.name+'</div><div class="n">'+s.bank+'</div>';
   el.appendChild(nm);
 
   var gt=document.createElement("div"); gt.className="grptag"; el.appendChild(gt);
@@ -670,6 +711,9 @@ function paintChan(i){
   var s=st[i];
   el.classList.toggle("sel",i===sel);
   el.querySelector(".cap").style.bottom="calc(9px + "+(s.pos*100)+"% - "+(s.pos*18)+"px)";
+  /* the phone fader is a filled gradient column, so the slot needs to know
+     where the handle is to dim everything above it */
+  el.querySelector(".fslot").style.setProperty("--p",(s.pos*100)+"%");
   el.querySelector(".name").classList.toggle("noaudio",!s.buf);
   el.querySelector(".db").textContent=fmtDb(posToDb(s.pos));
   el.querySelector(".chip.mute").classList.toggle("on",s.mute);
@@ -690,16 +734,362 @@ function paintTransport(){
   var b=document.getElementById("btnPlay");
   b.classList.toggle("on",playing);
   b.innerHTML = playing
-    ? '<svg viewBox="0 0 16 16"><path d="M3 2h4v12H3zM9 2h4v12H9z"/></svg>'
-    : '<svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z"/></svg>';
-  document.getElementById("btnLoop").classList.toggle("on",looping);
+    ? '<svg viewBox="0 0 16 16"><path d="M3 2h4v12H3zM9 2h4v12H9z"/></svg><span>Pause</span>'
+    : '<svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z"/></svg><span>Play stems</span>';
+  var lp=document.getElementById("btnLoop");
+  lp.classList.toggle("on",looping);
+  lp.innerHTML = looping ? "Loop\u2002ON" : "Loop\u2002OFF";
 }
 function setView(v){
   view=v;
   document.getElementById("wallwrap").hidden = v!=="ch";
   document.getElementById("gview").hidden = v!=="gr";
-  document.querySelectorAll("#viewsw button").forEach(function(b){ b.classList.toggle("on",b.dataset.v===v); });
-  if(v==="gr") updateGroups();
+  var gd=document.getElementById("gdview"); if(gd) gd.hidden = v!=="gd";
+  var ln=document.getElementById("lnview"); if(ln) ln.hidden = v!=="ln";
+  var mg=document.getElementById("mgroups"); if(mg) mg.hidden = v!=="gr";
+  var bn=document.getElementById("banknav"); if(bn) bn.hidden = v!=="ch";
+  var pd=document.getElementById("pagedots"); if(pd) pd.hidden = v!=="ch";
+  document.querySelectorAll("#viewsw button,#tabbar button").forEach(function(b){ b.classList.toggle("on",b.dataset.v===v); });
+  if(v==="gr"){ updateGroups(); buildMobileGroups(); }
+  if(v==="gd") buildGuided();
+  if(v==="ln") buildLearn();
+  if(v==="ch") paintDots();
+}
+
+/* ===== Mobile: M1 groups, M2 page dots, Learn =====
+   The phone gets the same four groups as a 2x2 of ribbed wheels, because a
+   volunteer can run a whole service from that screen with one thumb. */
+var mgWheels=[], mgHeld=null;
+function mgColour(gi){
+  var mem=st.filter(function(x){ return x.grp===gi; });
+  var tally={}; mem.forEach(function(x){ var k=plateFor(x); tally[k]=(tally[k]||0)+1; });
+  var key="blue", best=0;
+  Object.keys(tally).forEach(function(k){ if(tally[k]>best){best=tally[k];key=k;} });
+  return PLATE[key][1];
+}
+function buildMobileGroups(){
+  var host=document.getElementById("mgGrid"); if(!host) return;
+  host.innerHTML=""; mgWheels=[];
+  var role=document.getElementById("mgRole");
+  var sc=null; SCENARIOS.forEach(function(x){ if(x.key===scnActive) sc=x; });
+  if(role) role.textContent = sc ? sc.role : "Pick a seat in Learn";
+
+  groups.forEach(function(g,gi){
+    var w=document.createElement("div"); w.className="mwheel";
+    w.style.setProperty("--wc",mgColour(gi));
+    var lab=document.createElement("div"); lab.className="lab";
+    lab.innerHTML='<i></i><b></b>';
+    lab.querySelector("b").textContent=g.name;
+    lab.onclick=function(){ g.mute=!g.mute; applyAll(); updateGroups(); buildMobileGroups(); };
+    var body=document.createElement("div"); body.className="body";
+    var halo=document.createElement("div"); halo.className="halo";
+    var det=document.createElement("div"); det.className="det";
+    body.appendChild(halo); body.appendChild(det);
+    var read=document.createElement("div"); read.className="read";
+    read.innerHTML="<b></b><span></span>";
+    w.appendChild(lab); w.appendChild(body); w.appendChild(read);
+    w.classList.toggle("muted",g.mute);
+    host.appendChild(w);
+
+    function paint(){
+      var top=(1-g.pos)*100;
+      det.style.top=top+"%"; halo.style.top=top+"%";
+      var d=posToDb(g.pos);
+      read.querySelector("b").textContent=levelWord(d);
+      read.querySelector("span").textContent=fmtDb(d)+" dB";
+    }
+    /* a wheel is turned, so the gesture is vertical travel, not an absolute
+       position \u2014 the same feel as the ME hardware it is copying */
+    var drag=false, sy=0, sp=0;
+    body.addEventListener("pointerdown",function(e){
+      drag=true; body.setPointerCapture(e.pointerId); sy=e.clientY; sp=g.pos; e.preventDefault();
+    });
+    body.addEventListener("pointermove",function(e){
+      if(!drag) return;
+      g.pos=Math.max(0,Math.min(1,sp+(sy-e.clientY)/Math.max(60,body.getBoundingClientRect().height)));
+      applyAll(); paint(); updateGroups();
+    });
+    body.addEventListener("pointerup",function(){ drag=false; });
+    body.addEventListener("pointercancel",function(){ drag=false; });
+    body.addEventListener("dblclick",function(){ g.pos=UNITY; applyAll(); paint(); updateGroups(); });
+    paint();
+    mgWheels.push(paint);
+  });
+
+  var mt=document.getElementById("mgMeter"), knob=document.getElementById("mgKnob");
+  if(mt && !mt.dataset.bound){
+    mt.dataset.bound="1";
+    var mdrag=false, msy=0, msp=0;
+    mt.addEventListener("pointerdown",function(e){ mdrag=true; mt.setPointerCapture(e.pointerId); msy=e.clientY; msp=masterPos; e.preventDefault(); });
+    mt.addEventListener("pointermove",function(e){
+      if(!mdrag) return;
+      masterPos=Math.max(0,Math.min(1,msp+(msy-e.clientY)/Math.max(60,mt.getBoundingClientRect().height)));
+      applyMaster(); paintMobileMaster();
+    });
+    mt.addEventListener("pointerup",function(){ mdrag=false; });
+    mt.addEventListener("pointercancel",function(){ mdrag=false; });
+    mt.addEventListener("dblclick",function(){ masterPos=UNITY; applyMaster(); paintMobileMaster(); });
+  }
+  var mm=document.getElementById("mgMute");
+  if(mm && !mm.dataset.bound){
+    mm.dataset.bound="1";
+    /* there is no master-mute in the engine, so mute parks the master at the
+       bottom and remembers where it was */
+    mm.onclick=function(){
+      if(mgHeld===null){ mgHeld=masterPos; masterPos=0; }
+      else { masterPos=mgHeld; mgHeld=null; }
+      applyMaster(); paintMobileMaster();
+    };
+  }
+  paintMobileMaster();
+}
+function paintMobileMaster(){
+  var knob=document.getElementById("mgKnob");
+  if(knob) knob.style.top=((1-masterPos)*100)+"%";
+  var mm=document.getElementById("mgMute");
+  if(mm) mm.classList.toggle("on",mgHeld!==null);
+}
+function paintDots(){
+  var host=document.getElementById("pagedots"); if(!host) return;
+  var strips=wall.querySelectorAll(".bank:not([hidden]) .ch");
+  var per=4, pages=Math.max(1,Math.ceil(strips.length/per));
+  var page=0;
+  if(strips.length){
+    var w=strips[0].getBoundingClientRect().width+10;
+    page=Math.round(wall.scrollLeft/Math.max(1,w*per));
+  }
+  host.innerHTML="";
+  for(var k=0;k<pages;k++){
+    var i=document.createElement("i");
+    if(k===Math.min(page,pages-1)) i.className="on";
+    host.appendChild(i);
+  }
+}
+function buildLearn(){
+  var host=document.getElementById("lnList"); if(!host) return;
+  var chips=document.getElementById("lnChips");
+  if(chips){
+    chips.innerHTML="";
+    SCENARIOS.forEach(function(x){
+      var bt=document.createElement("button");
+      bt.className="gd-chip"+(scnActive===x.key?" on":"");
+      bt.textContent=x.who;
+      bt.onclick=function(){ applyScenario(x.key); buildLearn(); buildMobileGroups(); };
+      chips.appendChild(bt);
+    });
+  }
+  host.innerHTML="";
+  GUIDE.forEach(function(g,k){
+    var li=document.createElement("li");
+    li.innerHTML='<em>STEP '+(k+1)+' OF '+GUIDE.length+'</em><b></b><span></span>';
+    li.querySelector("b").textContent=g[0];
+    li.querySelector("span").textContent=g[1];
+    host.appendChild(li);
+  });
+}
+
+/* ===== Guided Cards =====
+   Figma frame "B \u2014 Guided Cards". Same state as everything else: the card
+   slider is the group fader, the Me card is a single channel, and the tiles
+   are that channel's pan and tone. Nothing here holds a level of its own. */
+var gdSel="me", gdCompare=false;
+var GDTIPS={
+  drummer:["Mute Band. Can you still hold the tempo?","Push Click up until it cuts, then back it off one notch.","Open Me and move Where it sits."],
+  leader: ["Mute Drums. What do you lose?","Push Other Singers up \u2014 can you still hear yourself?","Open Me and move Where it sits."],
+  bass:   ["Mute everything but Kick and Me.","Bring Drums back one notch at a time.","Open Me and take some brightness out."],
+  bgv:    ["Mute Me. Can you still find your note?","Push the lead vocal up before pushing yourself up.","Open Me and move Where it sits."],
+  blank:  ["Bring in what keeps you in time first.","Add whatever tells you where you are in the song.","Put yourself in last, and only until you can hear yourself."]
+};
+function gdMeIndex(){
+  var role=null; SCENARIOS.forEach(function(x){ if(x.key===scnActive) role=x.role; });
+  var idx=-1;
+  st.forEach(function(x){ if(role && x.name.toLowerCase()===String(role).toLowerCase()) idx=x.i; });
+  if(idx<0) st.forEach(function(x){ if(idx<0 && x.name==="VOX 1") idx=x.i; });
+  return idx<0?0:idx;
+}
+function gdWord(db){ return levelWord(db); }
+function gdMakeSlider(host,get,set){
+  var fill=document.createElement("i"), knob=document.createElement("u");
+  host.appendChild(fill); host.appendChild(knob);
+  function paint(){
+    var p=Math.max(0,Math.min(1,get()));
+    fill.style.width=(p*100)+"%"; knob.style.left=(p*100)+"%";
+  }
+  var drag=false;
+  function from(e){
+    var r=host.getBoundingClientRect();
+    set(Math.max(0,Math.min(1,(e.clientX-r.left)/Math.max(1,r.width))));
+    paint();
+  }
+  host.addEventListener("pointerdown",function(e){ drag=true; host.setPointerCapture(e.pointerId); from(e); e.preventDefault(); e.stopPropagation(); });
+  host.addEventListener("pointermove",function(e){ if(drag) from(e); });
+  host.addEventListener("pointerup",function(){ drag=false; });
+  host.addEventListener("pointercancel",function(){ drag=false; });
+  host.addEventListener("click",function(e){ e.stopPropagation(); });
+  paint();
+  return paint;
+}
+function gdTile(host,label,words,get,set){
+  var t=document.createElement("div"); t.className="gdc-tile";
+  var em=document.createElement("em"); em.textContent=label;
+  var b=document.createElement("b");
+  var trk=document.createElement("div"); trk.className="trk";
+  var knob=document.createElement("u"); trk.appendChild(knob);
+  t.appendChild(em); t.appendChild(b); t.appendChild(trk);
+  host.appendChild(t);
+  function paint(){
+    var p=Math.max(0,Math.min(1,get()));
+    knob.style.left=(p*100)+"%";
+    b.textContent=words(p);
+  }
+  var drag=false;
+  function from(e){
+    var r=trk.getBoundingClientRect();
+    set(Math.max(0,Math.min(1,(e.clientX-r.left)/Math.max(1,r.width)))); paint();
+  }
+  trk.addEventListener("pointerdown",function(e){ drag=true; trk.setPointerCapture(e.pointerId); from(e); e.preventDefault(); e.stopPropagation(); });
+  trk.addEventListener("pointermove",function(e){ if(drag) from(e); });
+  trk.addEventListener("pointerup",function(){ drag=false; });
+  trk.addEventListener("pointercancel",function(){ drag=false; });
+  paint();
+}
+function gdCardList(){
+  var list=[], me=gdMeIndex(), meCh=st[me];
+  list.push({id:"me",badge:"ME",title:"Me \u2014 "+meCh.name,
+    sub:"Your own mic \u00b7 "+meCh.name,
+    colour:PLATE[plateFor(meCh)][1], ch:meCh,
+    get:function(){ return meCh.pos; },
+    set:function(p){ meCh.pos=p; applyChan(me); mirror(me,["pos"]); paintChan(me); },
+    db:function(){ return posToDb(meCh.pos); },
+    mute:function(){ return meCh.mute; },
+    toggle:function(){ meCh.mute=!meCh.mute; mirror(me,["mute"]); applyAll(); paintChans(); }
+  });
+  groups.forEach(function(g,gi){
+    var mem=st.filter(function(x){ return x.grp===gi && x.i!==me; });
+    if(!mem.length) return;
+    /* colour the group by the plate its members mostly wear, not by whichever
+       channel happens to be first (Bass would make the whole band orange) */
+    var tally={};
+    mem.forEach(function(x){ var k=plateFor(x); tally[k]=(tally[k]||0)+1; });
+    var key="blue", best=0;
+    Object.keys(tally).forEach(function(k){ if(tally[k]>best){best=tally[k];key=k;} });
+    list.push({id:"g"+gi,badge:g.name.slice(0,2).toUpperCase(),title:g.name,
+      sub:mem.map(function(x){return x.name}).slice(0,4).join(" \u00b7 ")+
+          (mem.length>4?" \u2026":"")+" \u2014 "+mem.length+" channel"+(mem.length>1?"s":""),
+      colour:PLATE[key][1], members:mem,
+      get:function(){ return g.pos; },
+      set:function(p){ g.pos=p; applyAll(); updateGroups(); paintChans(); },
+      db:function(){
+        /* average member level plus the group fader \u2014 what the group
+           actually sounds like, not just where the fader sits */
+        var tot=0,n=0;
+        mem.forEach(function(x){ var d=posToDb(x.pos); if(d!==-Infinity){ tot+=d; n++; } });
+        if(!n) return -Infinity;
+        return tot/n + posToDb(g.pos);
+      },
+      mute:function(){ return g.mute; },
+      toggle:function(){ g.mute=!g.mute; applyAll(); updateGroups(); }
+    });
+  });
+  return list;
+}
+function gdRefDb(card){
+  var sc=null; SCENARIOS.forEach(function(x){ if(x.key===scnActive) sc=x; });
+  if(!sc) return null;
+  var idxs = card.ch ? [card.ch.i] : card.members.map(function(x){return x.i});
+  var vals=idxs.map(function(i){ var d=sc.mix[i]; return d===undefined?-60:d; });
+  if(!vals.length) return null;
+  return vals.reduce(function(a,b){return a+b},0)/vals.length;
+}
+function buildGuided(){
+  var host=document.getElementById("gdCards"); if(!host) return;
+  host.innerHTML="";
+  var sc=null; SCENARIOS.forEach(function(x){ if(x.key===scnActive) sc=x; });
+
+  var role=document.getElementById("gdRole");
+  role.textContent = sc ? ("You\u2019re mixing as: "+sc.role) : "Pick a seat to start from";
+
+  var chips=document.getElementById("gdChips"); chips.innerHTML="";
+  SCENARIOS.forEach(function(x){
+    var b=document.createElement("button");
+    b.className="gd-chip"+(scnActive===x.key?" on":"");
+    b.textContent=x.who;
+    b.onclick=function(){ applyScenario(x.key); buildGuided(); };
+    chips.appendChild(b);
+  });
+
+  document.getElementById("gdWhy").textContent = sc ? sc.note
+    : "Pick a seat above and this explains the mix it loaded.";
+  var tips=document.getElementById("gdTips"); tips.innerHTML="";
+  (GDTIPS[scnActive]||GDTIPS.blank).forEach(function(t,k){
+    var row=document.createElement("div"); row.className="gd-tip";
+    row.innerHTML="<b>"+(k+1)+"</b><span></span>";
+    row.querySelector("span").textContent=t;
+    tips.appendChild(row);
+  });
+  var cmp=document.getElementById("gdCompare");
+  cmp.classList.toggle("on",gdCompare);
+
+  gdCardList().forEach(function(c){
+    var card=document.createElement("div");
+    card.className="gdcard"+(gdSel===c.id?" sel":"")+(c.mute()?" muted":"");
+    card.style.setProperty("--gc",c.colour);
+    card.onclick=function(){ gdSel = (gdSel===c.id?"":c.id); buildGuided(); };
+
+    var top=document.createElement("div"); top.className="gdc-top";
+    var badge=document.createElement("div"); badge.className="gdc-badge"; badge.textContent=c.badge;
+    var txt=document.createElement("div"); txt.className="gdc-txt";
+    var tb=document.createElement("b"); tb.textContent=c.title;
+    var ts=document.createElement("span"); ts.textContent=c.sub;
+    txt.appendChild(tb); txt.appendChild(ts);
+    var gap=document.createElement("div"); gap.className="gdc-gap";
+    var read=document.createElement("div"); read.className="gdc-read";
+    var rb=document.createElement("b"); var rs=document.createElement("span");
+    read.appendChild(rb); read.appendChild(rs);
+    var mu=document.createElement("button"); mu.className="gdc-mute"+(c.mute()?" on":"");
+    mu.textContent="MUTE";
+    mu.onclick=function(e){ e.stopPropagation(); c.toggle(); buildGuided(); };
+    top.appendChild(badge); top.appendChild(txt); top.appendChild(gap);
+    top.appendChild(read); top.appendChild(mu);
+    card.appendChild(top);
+
+    function readout(){
+      var d=c.db();
+      rb.textContent=gdWord(d);
+      var line=fmtDb(d)+" dB";
+      if(gdCompare){
+        var r=gdRefDb(c);
+        if(r!==null) line+="  \u00b7  MD "+fmtDb(r)+" dB";
+      }
+      rs.textContent=line;
+    }
+    var sl=document.createElement("div"); sl.className="gdc-slider";
+    card.appendChild(sl);
+    gdMakeSlider(sl,c.get,function(p){ c.set(p); readout(); });
+    readout();
+
+    if(gdSel===c.id){
+      var tiles=document.createElement("div"); tiles.className="gdc-tiles";
+      var targets = c.ch ? [c.ch] : c.members;
+      gdTile(tiles,"Where it sits",
+        function(p){ var v=p*2-1; return Math.abs(v)<.04?"Centre":(v<0?"Left":"Right")+" "+Math.round(Math.abs(v)*100)+"%"; },
+        function(){ return (targets[0].pan+1)/2; },
+        function(p){ var v=p*2-1; if(Math.abs(v)<.04) v=0;
+          targets.forEach(function(x){ x.pan=v; applyChan(x.i); }); paintChans(); });
+      gdTile(tiles,"Low end",
+        function(p){ var v=p*24-12; return v>2?"A bit more":(v<-2?"A bit less":"As it comes"); },
+        function(){ return (targets[0].bass+12)/24; },
+        function(p){ var v=p*24-12;
+          targets.forEach(function(x){ x.bass=v; applyChan(x.i); mirror(x.i,["bass"]); }); paintChans(); });
+      gdTile(tiles,"Brightness",
+        function(p){ var v=p*24-12; return v>2?"A bit more":(v<-2?"A bit less":"As it comes"); },
+        function(){ return (targets[0].treb+12)/24; },
+        function(p){ var v=p*24-12;
+          targets.forEach(function(x){ x.treb=v; applyChan(x.i); mirror(x.i,["treb"]); }); paintChans(); });
+      card.appendChild(tiles);
+    }
+    host.appendChild(card);
+  });
 }
 
 var frame=0;
@@ -757,25 +1147,26 @@ var GUIDE=[
 ];
 var gi_=0;
 function paintGuide(){
-  var g=GUIDE[gi_];
-  document.getElementById("gStep").textContent="Step "+(gi_+1)+" of "+GUIDE.length;
-  document.getElementById("gTitle").textContent=g[0];
-  document.getElementById("gBody").textContent=g[1];
-  var d=document.getElementById("gDots"); d.innerHTML="";
-  GUIDE.forEach(function(_,k){ var i=document.createElement("i"); if(k<=gi_) i.className="on"; d.appendChild(i); });
-  document.getElementById("gBack").hidden = gi_===0;
-  document.getElementById("gNext").textContent = gi_===GUIDE.length-1 ? "Start mixing" : "Next";
+  var g=GUIDE[gi_], bar=document.getElementById("coachbar");
+  document.getElementById("ovl3").hidden=true;
+  if(!bar) return;
+  bar.hidden=false;
+  document.getElementById("coachStep").textContent="STEP "+(gi_+1)+" OF "+GUIDE.length;
+  document.getElementById("coachText").textContent=g[0]+"  "+g[1];
+  document.getElementById("coachPrev").hidden = gi_===0;
+  document.getElementById("coachNext").textContent = gi_===GUIDE.length-1 ? "Start mixing" : "Next";
 }
 function closeGuide(){
   document.getElementById("ovl3").hidden=true;
+  var bar=document.getElementById("coachbar"); if(bar) bar.hidden=true;
   try{ localStorage.setItem("iemGuideSeen","1"); }catch(e){}
 }
-document.getElementById("gNext").onclick=function(){
+document.getElementById("coachNext").onclick=function(){
   if(gi_===GUIDE.length-1){ closeGuide(); return; }
   gi_++; paintGuide();
 };
-document.getElementById("gBack").onclick=function(){ if(gi_>0){gi_--;paintGuide();} };
-document.getElementById("gSkip").onclick=closeGuide;
+document.getElementById("coachPrev").onclick=function(){ if(gi_>0){gi_--;paintGuide();} };
+document.getElementById("coachSkip").onclick=closeGuide;
 
 /* ---------- advanced toggle ---------- */
 var adv=false;
@@ -997,6 +1388,26 @@ document.addEventListener("visibilitychange",function(){
 
 /* ---------- wiring ---------- */
 document.querySelectorAll("#viewsw button").forEach(function(b){ b.onclick=function(){ setView(b.dataset.v); }; });
+document.querySelectorAll("#tabbar button").forEach(function(b){ b.onclick=function(){ setView(b.dataset.v); }; });
+(function(){
+  var tb=document.getElementById("tabbar");
+  function syncShell(){
+    if(!tb) return;
+    tb.hidden = !isMobile && !window.matchMedia("(max-width:820px)").matches;
+    if(view==="gd" && tb.hidden===false) setView("ch");
+  }
+  syncShell();
+  window.addEventListener("resize",function(){ syncShell(); paintDots(); });
+  if(wall) wall.addEventListener("scroll",paintDots,{passive:true});
+})();
+(function(){
+  var eng=document.getElementById("gdEngineer");
+  if(eng) eng.onclick=function(){ setView("ch"); };
+  var rst=document.getElementById("gdReset");
+  if(rst) rst.onclick=function(){ var r=document.getElementById("btnReset"); if(r) r.click(); buildGuided(); };
+  var cmp=document.getElementById("gdCompare");
+  if(cmp) cmp.onclick=function(){ gdCompare=!gdCompare; buildGuided(); };
+})();
 var toolsEl=document.getElementById("tools");
 document.getElementById("btnMore").onclick=function(e){ e.stopPropagation(); toolsEl.classList.toggle("open"); };
 document.addEventListener("click",function(e){
@@ -1114,5 +1525,6 @@ window.IEMRoom = {
 };
 
 var seen=false; try{ seen=localStorage.getItem("iemGuideSeen")==="1"; }catch(e){}
-if(seen){ document.getElementById("ovl3").hidden=true; } else { paintGuide(); }
+document.getElementById("ovl3").hidden=true;
+if(!seen){ paintGuide(); }
 })();

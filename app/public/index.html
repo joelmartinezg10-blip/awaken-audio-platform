@@ -1214,22 +1214,28 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
    Generated from the artifact by scope.py; every selector is prefixed so
    nothing here can reach the site chrome or the arcade. */
 #p-iem{
-  --blackout:#09090B;
-  --console:#17171C;
-  --rack:#0F0F13;
-  --strip:#1D1D24;
-  --white:#F5F3EF;
-  --muted:#9A948C;
-  --dim:#6B655E;
-  --line:#26262D;
-  --violet:#7657FF;
-  --violet-lt:#9C86FF;
-  --heat:#FF5A36;
-  --amber:#FFB020;
-  --led:#39D98A;
-  --led-dk:#12351F;
+  /* Console-language palette, from the IEM Mix Room redesign in Figma
+     (file WxRT8juBAUUrYjBmOHPFVo, Option A). Cool slate instead of the
+     old warm charcoal; blue is the interactive accent, green is level. */
+  --blackout:#0b0e13;
+  --console:#141922;
+  --rack:#1b2230;
+  --strip:#1a2130;
+  --white:#e8edf5;
+  --muted:#8493a8;
+  --dim:#7787a0;
+  --line:#2a3342;
+  --violet:#4da3ff;
+  --violet-lt:#8cc6ff;
+  --heat:#e2574c;
+  --amber:#e0a33c;
+  --led:#4caf6e;
+  --led-dk:#13291d;
+  --ink:#08121f;
+  --well:#0d1219;
+  --cap:#39455a;
   --accent:var(--violet);
-  --display:"Archivo Black","Arial Black",Helvetica,sans-serif;
+  --display:"Archivo",system-ui,-apple-system,sans-serif;
   --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
   color-scheme:dark;
@@ -1668,6 +1674,347 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 #p-iem .chsheet .csrow .ghost{flex:1;text-align:center;padding:13px 8px;min-width:88px}
 #p-iem .chsheet .csrow .ghost.on{background:var(--heat);border-color:var(--heat);color:#0b0b0d;font-weight:600}
 #p-iem #ovl4{align-items:flex-end}
+
+/* ===== Console 2.0 — IEM Mix Room redesign (Figma WxRT8juBAUUrYjBmOHPFVo,
+   Option A "Console language"). These rules come after the originals and
+   deliberately override them; the audio engine and fader maths are untouched. ===== */
+#p-iem{font-family:var(--sans)}
+#p-iem .topbar{padding:14px 24px;gap:14px;background:var(--console);border-bottom:1px solid var(--line)}
+#p-iem .brand b{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:0;color:var(--white)}
+#p-iem .brand span{font-family:var(--sans);font-size:11px;letter-spacing:0;text-transform:none;color:var(--muted)}
+#p-iem .tbgap{flex:1 1 0;min-width:0}
+
+#p-iem .viewsw{background:var(--rack);border:none;border-radius:10px;padding:4px;gap:4px;overflow:visible}
+#p-iem .viewsw button{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:0;
+  text-transform:none;padding:7px 16px;border-radius:7px;color:var(--muted);background:transparent}
+#p-iem .viewsw button+button{border-left:none}
+#p-iem .viewsw button:hover{background:#ffffff0d;color:var(--white)}
+#p-iem .viewsw button.on{background:var(--accent);color:var(--ink);font-weight:600}
+
+#p-iem .ghost{font-family:var(--sans);font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;
+  background:var(--rack);border:1px solid var(--line);border-radius:9px;padding:9px 14px;color:var(--white)}
+#p-iem .ghost:hover{border-color:#3b485c;background:#222b3a}
+#p-iem .ghost.big{border-color:var(--line);color:var(--white);padding:9px 14px;font-size:12px}
+#p-iem .ghost.big:hover{background:#222b3a;color:var(--white)}
+#p-iem .ghost.more{font-size:13px;padding:9px 12px}
+
+/* transport bar — its own row under the top bar */
+#p-iem .tportbar{display:flex;align-items:center;gap:14px;padding:10px 24px;
+  background:#10151d;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:39}
+#p-iem .playpill{display:flex;align-items:center;gap:9px;background:var(--accent);color:var(--ink);
+  border-radius:24px;padding:10px 24px 10px 22px;font-size:13px;font-weight:700;transition:.12s}
+#p-iem .playpill svg{width:12px;height:12px;fill:currentColor}
+#p-iem .playpill:hover{filter:brightness(1.08)}
+#p-iem .playpill.on{background:var(--led);color:#06180e}
+#p-iem .looppill{background:var(--rack);border:1px solid var(--line);border-radius:24px;
+  padding:10px 16px;font-size:12px;font-weight:600;color:var(--muted);transition:.12s}
+#p-iem .looppill.on{color:#7bd88f;border-color:#2f4a3a}
+#p-iem .tportbar .tbtn{width:40px;height:38px;border-radius:19px;background:var(--rack);border:1px solid var(--line)}
+#p-iem .tportbar .scrub{flex:1 1 200px;padding:0}
+#p-iem input[type=range].bar{height:8px;border-radius:4px;background:#1e2635}
+#p-iem input[type=range].bar::-webkit-slider-runnable-track{height:8px}
+#p-iem input[type=range].bar::-moz-range-track{height:8px;background:#1e2635}
+#p-iem input[type=range].bar::-webkit-slider-thumb{width:18px;height:18px;background:var(--accent);
+  border:3px solid #10151d;margin-top:-5px}
+#p-iem input[type=range].bar::-moz-range-thumb{width:18px;height:18px;background:var(--accent);border:3px solid #10151d}
+#p-iem input[type=range].bar:active::-webkit-slider-thumb{background:var(--violet-lt)}
+#p-iem .tportbar .clock{font-family:var(--sans);font-size:12px;font-weight:500;background:none;
+  border:none;color:var(--muted);padding:0;min-width:74px;text-align:right}
+#p-iem .tportbar .clock b{color:var(--muted);font-weight:500}
+
+/* bank nav — pages the 29 channels instead of cramming them */
+#p-iem .banknav{display:flex;align-items:center;gap:8px;padding:10px 24px;background:var(--console);
+  border-bottom:1px solid var(--line);flex-wrap:wrap}
+#p-iem .banknav[hidden]{display:none}
+#p-iem .bkbtn{display:flex;align-items:center;gap:8px;background:var(--rack);border-radius:8px;
+  padding:8px 18px;font-size:12px;font-weight:700;color:var(--muted);transition:.12s}
+#p-iem .bkbtn:hover{color:var(--white)}
+#p-iem .bkbtn i{width:8px;height:8px;border-radius:50%;background:var(--bkc,#4da3ff);display:block;flex:none}
+#p-iem .bkbtn.on{background:var(--bkc,#4da3ff);color:var(--blackout)}
+#p-iem .bkbtn.on i{display:none}
+#p-iem .bknote{margin-left:auto;font-size:11px;color:var(--muted)}
+
+/* channel strip — card, colour name plate, pots, mute, fader + LED, dB */
+#p-iem .stage{align-items:stretch}
+#p-iem .wall{background:var(--blackout);gap:10px;padding:16px 24px;scrollbar-color:#3b485c #10151d}
+#p-iem .wall::-webkit-scrollbar-track{background:#10151d}
+#p-iem .wall::-webkit-scrollbar-thumb{background:#3b485c;border-color:#10151d}
+#p-iem .bank{gap:10px}
+#p-iem .bankmark{display:none}
+#p-iem .ch{width:92px;padding:0 0 12px;border-right:none;border:1px solid var(--line);
+  border-radius:12px;background:var(--console);align-items:center;gap:10px;overflow:hidden}
+#p-iem .ch.sel{background:#182131;border-color:#3b485c}
+#p-iem .name{height:42px;border-radius:12px 12px 0 0;border:none;box-shadow:none;
+  background:var(--cc);padding:8px 4px;gap:1px}
+#p-iem .name .t{font-size:12px;font-weight:700;color:var(--blackout);text-shadow:none;letter-spacing:0}
+#p-iem .name .n{font-family:var(--sans);font-size:8px;font-weight:500;letter-spacing:.02em;
+  color:rgba(11,14,19,.62);text-transform:uppercase}
+#p-iem .name.lite .t{color:var(--blackout);text-shadow:none}
+#p-iem .name.lite .n{color:rgba(11,14,19,.62)}
+#p-iem .name.linked::after{color:rgba(11,14,19,.7)}
+#p-iem .name.lite.linked::after{color:rgba(11,14,19,.7)}
+#p-iem .ch.sel .name{box-shadow:inset 0 0 0 2px var(--white)}
+#p-iem .grptag{font-family:var(--sans);font-size:9px;letter-spacing:0;color:var(--muted);
+  border-bottom:none;height:auto;line-height:1.2;padding:0;margin:0;width:100%}
+#p-iem .grptag.on{color:var(--violet-lt);border-bottom-color:transparent}
+#p-iem .pots{gap:8px}
+#p-iem .pot{height:auto;gap:4px}
+#p-iem .pot svg{width:32px;height:32px}
+#p-iem .pot .kv{font-family:var(--sans);font-size:9px;font-weight:500;color:var(--muted);gap:3px}
+#p-iem .pot .kv i{font-size:9px;font-weight:500;letter-spacing:0;color:var(--muted);text-transform:none}
+#p-iem .pot.act .kv,#p-iem .pot.act .kv i{color:var(--white)}
+#p-iem .chip-row{gap:4px;height:auto;margin:0;width:calc(100% - 22px)}
+#p-iem .chip{border:none;border-radius:6px;background:#222b3a;font-family:var(--sans);font-size:9px;
+  font-weight:700;letter-spacing:.02em;padding:5px 0;color:var(--muted)}
+#p-iem .chip.mute.on{background:var(--heat);color:var(--blackout)}
+#p-iem .chip.solo.on{background:var(--amber);color:var(--blackout)}
+#p-iem .faderbox{gap:8px;padding:0;justify-content:center;min-height:180px}
+#p-iem .fslot{flex:0 0 26px;width:26px;border-radius:13px;background:var(--well);border:1px solid #252e3d}
+#p-iem .fslot::before{left:50%;top:11px;bottom:11px;width:4px;border-radius:2px;
+  background:#1a2230;box-shadow:none}
+#p-iem .fslot .ticks{display:none}
+#p-iem .fslot .unity{left:6px;right:6px;background:rgba(232,237,245,.30)}
+#p-iem .fslot .unity::after{right:-2px;top:-9px;font-family:var(--sans);font-size:7px;color:var(--muted)}
+#p-iem .cap{width:24px;height:40px;border-radius:6px;background:var(--cap);border:none;
+  box-shadow:0 2px 6px rgba(0,0,0,.55)}
+#p-iem .cap::before{left:2px;right:2px;height:2.5px;border-radius:2px;background:var(--cc,#e8edf5);box-shadow:none}
+#p-iem .cap::after{display:none}
+#p-iem .ch.sel .cap{background:#4a5870}
+#p-iem .ch.sel .cap::before{background:var(--white);box-shadow:0 0 6px rgba(232,237,245,.5)}
+#p-iem .ledmeter{width:6px;border:none;background:transparent;border-radius:0}
+#p-iem .ledmeter i{background:linear-gradient(0deg,#4caf6e 0%,#4caf6e 62%,#e0a33c 82%,#e2574c 100%)}
+#p-iem .ledmeter::after{background:repeating-linear-gradient(0deg,transparent 0 11.8px,#141922 11.8px 13.8px)}
+#p-iem .db{font-family:var(--sans);font-size:11px;font-weight:600;color:var(--white);height:auto;line-height:1.2}
+
+/* coach bar — the five-step guide, in a bar instead of a modal */
+#p-iem .coachbar{display:flex;align-items:center;gap:10px;padding:12px 24px;background:#121a26;
+  border-top:1px solid var(--line);flex-wrap:wrap}
+#p-iem .coachbar[hidden]{display:none}
+#p-iem .cstep{background:var(--accent);color:var(--ink);font-size:9px;font-weight:700;
+  border-radius:6px;padding:3px 8px;flex:none;letter-spacing:.02em}
+#p-iem .ctext{font-size:12px;color:var(--white);flex:1 1 320px;min-width:0}
+#p-iem .cgap{flex:0 1 20px}
+#p-iem .clink{font-size:11px;font-weight:500;color:var(--muted);padding:6px 10px;border-radius:7px;flex:none}
+#p-iem .clink:hover{color:var(--white)}
+#p-iem .clink.solid{background:var(--rack);border:1px solid var(--line);color:var(--white);font-weight:600}
+
+@media(max-width:820px){
+  #p-iem .topbar{padding:10px 14px}
+  #p-iem .tportbar{padding:8px 14px;gap:10px}
+  #p-iem .playpill{padding:10px 18px}
+  #p-iem .playpill span{display:none}
+  #p-iem .banknav{padding:8px 14px;gap:6px;flex-wrap:nowrap;overflow-x:auto}
+  #p-iem .bkbtn{flex:none;padding:8px 14px}
+  #p-iem .bknote{display:none}
+  #p-iem .wall{padding:12px 14px}
+}
+
+
+/* ===== Guided Cards (Figma frame "B — Guided Cards") =====
+   The same mix as the fader wall, said in words: one card per part of the
+   stage, a level you can read without knowing what a dB is, and a rail that
+   tells you why the mix is shaped this way. ===== */
+#p-iem .gdview{flex:1;min-width:0;display:flex;flex-direction:column;background:#0e1117;overflow:hidden}
+#p-iem .gdview[hidden]{display:none}
+#p-iem .gd-head{display:flex;align-items:center;gap:16px;padding:18px 32px;
+  background:#171c26;border-bottom:1px solid #2c3444;flex-wrap:wrap}
+#p-iem .gd-title h1{font-family:var(--display);font-size:20px;font-weight:700;margin:0 0 3px;color:#edf1f7;text-transform:none;letter-spacing:0}
+#p-iem .gd-title p{margin:0;font-size:12px;font-weight:600;color:#5ec8a0}
+#p-iem .gd-gap{flex:1 1 0;min-width:0}
+#p-iem .gd-head .ghost{border-radius:28px;padding:13px 20px;font-size:13px;background:#1f2633;border-color:#2c3444}
+#p-iem .gd-scn{display:flex;align-items:center;gap:10px;padding:14px 32px;background:#121722;flex-wrap:wrap}
+#p-iem .gd-scnlbl{font-size:12px;color:#8a97ab;flex:none}
+#p-iem .gd-chips{display:flex;gap:10px;flex-wrap:wrap}
+#p-iem .gd-chip{background:#1f2633;border:1px solid #2c3444;border-radius:20px;padding:9px 16px;
+  font-size:12px;font-weight:600;color:#edf1f7;transition:.12s}
+#p-iem .gd-chip:hover{border-color:#3b485c}
+#p-iem .gd-chip.on{background:#5ec8a0;border-color:#5ec8a0;color:#0b1712}
+#p-iem .gd-body{flex:1;min-height:0;display:flex;gap:22px;padding:22px 32px;overflow-y:auto;align-items:flex-start}
+#p-iem .gd-cards{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:12px}
+#p-iem .gd-rail{width:320px;flex:none;background:#171c26;border:1px solid #2c3444;border-radius:18px;
+  padding:20px;display:flex;flex-direction:column;gap:14px;align-self:stretch;min-height:420px}
+#p-iem .gd-rail h3{margin:0;font-size:10px;font-weight:700;color:#5ec8a0;letter-spacing:.02em}
+#p-iem .gd-rail p{margin:0;font-size:13px;color:#edf1f7;line-height:1.5}
+#p-iem .gd-rail hr{border:none;border-top:1px solid #2c3444;margin:0;width:100%}
+#p-iem .gd-tips{display:flex;flex-direction:column;gap:12px}
+#p-iem .gd-tip{display:flex;gap:10px;align-items:flex-start}
+#p-iem .gd-tip b{background:#1f2633;border-radius:14px;padding:5px 9px;font-size:11px;color:#5ec8a0;flex:none;line-height:1}
+#p-iem .gd-tip span{font-size:12px;color:#edf1f7;line-height:1.45}
+#p-iem .gd-compare{background:#5ec8a0;border-radius:14px;padding:14px 16px;width:100%;
+  display:flex;flex-direction:column;gap:3px;align-items:center;color:#0b1712}
+#p-iem .gd-compare b{font-size:13px;font-weight:700}
+#p-iem .gd-compare span{font-size:10px}
+#p-iem .gd-compare.on{background:#1f2633;border:1px solid #5ec8a0;color:#5ec8a0}
+
+#p-iem .gdcard{background:#171c26;border:1px solid #2c3444;border-radius:18px;padding:13px 20px;
+  display:flex;flex-direction:column;gap:11px;width:100%;transition:.14s;text-align:left}
+#p-iem .gdcard.sel{border:2px solid var(--gc,#4da3ff);padding:12px 19px}
+#p-iem .gdcard.muted{opacity:.55}
+#p-iem .gdc-top{display:flex;align-items:center;gap:14px;width:100%}
+#p-iem .gdc-badge{background:var(--gc,#4da3ff);color:#0b0e13;border-radius:12px;padding:12px 14px;
+  font-size:16px;font-weight:700;flex:none;line-height:1}
+#p-iem .gdc-txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+#p-iem .gdc-txt b{font-size:16px;font-weight:700;color:#edf1f7}
+#p-iem .gdc-txt span{font-size:11px;color:#8a97ab}
+#p-iem .gdc-gap{flex:1 1 0;min-width:0}
+#p-iem .gdc-read{display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex:none}
+#p-iem .gdc-read b{font-size:14px;font-weight:700;color:var(--gc,#edf1f7)}
+#p-iem .gdc-read span{font-size:10px;color:#8a97ab;white-space:nowrap}
+#p-iem .gdc-mute{background:#242c3a;border-radius:10px;padding:10px 16px;font-size:11px;
+  font-weight:700;color:#8a97ab;flex:none}
+#p-iem .gdc-mute.on{background:var(--heat);color:#0b0e13}
+#p-iem .gdc-slider{height:26px;border-radius:13px;background:#0f141d;position:relative;
+  width:100%;cursor:pointer;touch-action:none;overflow:hidden}
+#p-iem .gdc-slider i{position:absolute;left:0;top:0;bottom:0;border-radius:13px;
+  background:var(--gc,#4da3ff);opacity:.85}
+#p-iem .gdc-slider u{position:absolute;top:-4px;width:34px;height:34px;border-radius:50%;
+  background:#edf1f7;border:4px solid #0f141d;box-shadow:0 2px 6px rgba(0,0,0,.5);
+  transform:translateX(-17px);display:none}
+#p-iem .gdc-slider{overflow:visible}
+#p-iem .gdc-slider u{display:block}
+#p-iem .gdc-tiles{display:flex;gap:12px;width:100%}
+#p-iem .gdc-tile{flex:1 1 0;min-width:0;background:#1f2633;border-radius:12px;padding:10px 14px 12px;
+  display:flex;flex-direction:column;gap:8px}
+#p-iem .gdc-tile em{font-style:normal;font-size:10px;font-weight:500;color:#8a97ab}
+#p-iem .gdc-tile b{font-size:13px;font-weight:600;color:#edf1f7}
+#p-iem .gdc-tile .trk{height:8px;border-radius:4px;background:#0f141d;position:relative;cursor:pointer;touch-action:none}
+#p-iem .gdc-tile .trk u{position:absolute;top:-3px;width:14px;height:14px;border-radius:50%;
+  background:#edf1f7;transform:translateX(-7px)}
+#p-iem .gdc-md{font-size:10px;color:#8a97ab;margin-top:-4px}
+
+@media(max-width:1040px){
+  #p-iem .gd-body{flex-direction:column}
+  #p-iem .gd-rail{width:100%;min-height:0}
+}
+@media(max-width:820px){
+  #p-iem .gd-head,#p-iem .gd-scn,#p-iem .gd-body{padding-left:14px;padding-right:14px}
+  #p-iem .gdc-tiles{flex-direction:column}
+}
+
+
+/* ===== Mobile shell (Figma frames "M1 — Groups (wheels)" and
+   "M2 — Channels (swipe pages)"). Everything here is behind the phone
+   breakpoint; the desktop console above is untouched. ===== */
+#p-iem .mgroups,#p-iem .lnview,#p-iem .tabbar,#p-iem .pagedots{display:none}
+#p-iem .mgroups[hidden],#p-iem .lnview[hidden],#p-iem .tabbar[hidden],#p-iem .pagedots[hidden]{display:none!important}
+
+@media(max-width:820px){
+  /* the view switch moves to the bottom of the screen, where a thumb is */
+  #p-iem .viewsw{display:none}
+  #p-iem .tabbar{display:flex;align-items:stretch;background:#171c26;border-top:1px solid #2c3444;
+    padding:9px 8px 3px;position:sticky;bottom:0;z-index:38}
+  #p-iem .tabbar button{flex:1 1 0;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:5px 0;color:#8a97ab;font-size:10px;font-weight:600}
+  #p-iem .tabbar button i{font-style:normal;font-size:15px;line-height:1}
+  #p-iem .tabbar button.on{color:#5ec8a0}
+
+  /* M1 — four ribbed wheels and a master meter column */
+  #p-iem .gview{display:none!important}
+  #p-iem .mgroups{flex:1;min-height:0;display:flex;flex-direction:column;background:#0e1117}
+  #p-iem .mg-head{display:flex;align-items:center;padding:8px 20px 10px}
+  #p-iem .mg-head h1{font-family:var(--display);font-size:22px;font-weight:700;margin:0 0 2px;
+    color:#edf1f7;text-transform:none;letter-spacing:0}
+  #p-iem .mg-head p{margin:0;font-size:11px;font-weight:600;color:#5ec8a0}
+  #p-iem .mg-gap{flex:1 1 0}
+  #p-iem .mg-sel{background:#1f2633;border:1px solid #2c3444;border-radius:10px;padding:7px 12px;
+    display:flex;flex-direction:column;align-items:center;gap:1px}
+  #p-iem .mg-sel b{font-size:8px;font-weight:700;color:#8a97ab}
+  #p-iem .mg-sel span{font-size:11px;font-weight:600;color:#edf1f7}
+  #p-iem .mg-body{flex:1;min-height:0;display:flex;gap:12px;padding:0 16px 10px}
+  #p-iem .mg-grid{flex:1 1 0;min-width:0;display:grid;grid-template-columns:1fr 1fr;
+    grid-template-rows:1fr 1fr;gap:12px}
+  #p-iem .mwheel{background:#171c26;border:1px solid #2c3444;border-radius:16px;padding:10px;
+    display:flex;flex-direction:column;align-items:center;gap:8px;min-height:0}
+  #p-iem .mwheel .lab{background:#1f2633;border:1px solid #3a4356;border-radius:8px;width:100%;
+    display:flex;align-items:center;justify-content:center;gap:7px;padding:6px 10px;flex:none}
+  #p-iem .mwheel .lab i{width:7px;height:7px;border-radius:50%;background:var(--wc,#4da3ff);display:block;flex:none}
+  #p-iem .mwheel .lab b{font-size:13px;font-weight:700;color:#edf1f7}
+  #p-iem .mwheel .body{flex:1;min-height:80px;width:64px;border-radius:14px;border:1px solid #454f63;
+    position:relative;overflow:hidden;cursor:pointer;touch-action:none;
+    background:linear-gradient(90deg,#171c26 0%,#475266 50%,#171c26 100%)}
+  #p-iem .mwheel .body::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(180deg,rgba(13,18,25,.55) 0 2px,transparent 2px 7.54px)}
+  #p-iem .mwheel .body .det{position:absolute;left:-1px;right:-1px;height:3px;background:var(--wc,#4da3ff);
+    opacity:.95;transform:translateY(-50%)}
+  #p-iem .mwheel .body .halo{position:absolute;left:-1px;right:-1px;height:26px;background:var(--wc,#4da3ff);
+    opacity:.18;transform:translateY(-50%)}
+  #p-iem .mwheel .read{display:flex;flex-direction:column;align-items:center;gap:1px;flex:none}
+  #p-iem .mwheel .read b{font-size:12px;font-weight:700;color:var(--wc,#edf1f7)}
+  #p-iem .mwheel .read span{font-size:9px;color:#8a97ab}
+  #p-iem .mwheel.muted{opacity:.5}
+  #p-iem .mg-master{width:76px;flex:none;background:#171c26;border:1px solid #2c3444;border-radius:16px;
+    padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:8px}
+  #p-iem .mg-mlbl{background:#1f2633;border-radius:8px;width:100%;padding:5px 0;text-align:center}
+  #p-iem .mg-mlbl b{display:block;font-size:8px;font-weight:700;color:#8a97ab}
+  #p-iem .mg-mlbl span{display:block;font-size:11px;font-weight:700;color:#edf1f7}
+  #p-iem .mg-meter{flex:1;min-height:0;width:100%;border-radius:28px;border:2px solid #3a4356;
+    position:relative;cursor:pointer;touch-action:none;overflow:hidden;
+    background:linear-gradient(180deg,#b8211c 0%,#bf9e33 16%,#4dcc54 32%,#57e561 100%)}
+  #p-iem .mg-meter u{position:absolute;left:50%;width:50px;height:50px;border-radius:50%;
+    border:3px solid #edf1f7;background:rgba(10,15,20,.35);transform:translate(-50%,-50%);pointer-events:none}
+  #p-iem .mg-meter u::after{content:"";position:absolute;left:50%;top:50%;width:10px;height:10px;
+    border-radius:50%;background:#edf1f7;transform:translate(-50%,-50%)}
+  #p-iem .mg-mute{background:#1f2633;border:1px solid #2c3444;border-radius:10px;width:100%;
+    padding:10px 0;font-size:11px;font-weight:700;color:#8a97ab;flex:none}
+  #p-iem .mg-mute.on{background:var(--heat);border-color:var(--heat);color:#0b0e13}
+
+  /* M2 — four thin faders per page, swipe for the next four */
+  #p-iem .wall{padding:10px 14px;gap:10px;scroll-snap-type:x mandatory;overflow-x:auto}
+  #p-iem .bank{gap:10px}
+  #p-iem .ch{width:22vw;min-width:72px;max-width:92px;scroll-snap-align:start;padding:0 0 10px;gap:8px}
+  #p-iem .ch .pots,#p-iem .ch .grptag{display:none}
+  #p-iem .ch .name{height:auto;border-radius:12px 12px 0 0;padding:7px 4px}
+  #p-iem .ch .name .n{display:none}
+  #p-iem .ch .faderbox{min-height:0;flex:1;gap:4px;width:100%;justify-content:center}
+  #p-iem .ch .fslot{flex:0 0 42px;width:42px;border-radius:21px;border:1px solid #252e3d;
+    background:linear-gradient(180deg,#b8211c 0%,#bf9e33 16%,#4caf6e 34%,#4caf6e 100%)}
+  /* everything above the handle is out of the mix, so it reads as unlit */
+  #p-iem .ch .fslot::before{content:"";display:block;position:absolute;left:0;right:0;top:0;
+    height:calc(100% - var(--p,78%));background:#0e1117;opacity:.82;transform:none;width:auto;
+    border-radius:21px 21px 0 0;box-shadow:none}
+  #p-iem .ch .fslot .unity{left:4px;right:4px;background:rgba(255,255,255,.45)}
+  #p-iem .ch .fslot .unity::after{display:none}
+  #p-iem .ch .cap{width:26px;height:26px;border-radius:50%;background:rgba(10,15,20,.3);
+    border:3px solid #edf1f7;box-shadow:none;transform:translate(-50%,50%)}
+  #p-iem .ch .cap::before{left:50%;top:50%;right:auto;width:8px;height:8px;border-radius:50%;
+    transform:translate(-50%,-50%);background:#edf1f7}
+  #p-iem .ch .ledmeter{display:none}
+  /* the phone board is a fixed pane, not a page that scrolls \u2014 the tab
+     bar has to stay reachable under the thumb */
+  #p-iem #app{min-height:0}
+  #p-iem .stage{height:56vh;min-height:300px;max-height:560px}
+  #p-iem .wallwrap{min-height:0}
+  #p-iem .wall{align-items:stretch}
+  #p-iem .bank{align-items:stretch}
+  #p-iem .ch{display:flex;flex-direction:column}
+  #p-iem .ch .name{order:1}
+  #p-iem .ch .faderbox{order:2}
+  #p-iem .ch .db{order:3}
+  #p-iem .ch .chip-row{order:4;width:calc(100% - 16px);gap:4px}
+  #p-iem .masterch{display:none}
+  #p-iem .masterbar{display:none}
+  #p-iem .ch .chip.solo{display:none}
+  #p-iem .ch .chip.mute{padding:8px 0;font-size:10px}
+  #p-iem .pagedots{display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 0;
+    background:#0e1117}
+  #p-iem .pagedots i{width:6px;height:6px;border-radius:50%;background:#2c3444;display:block}
+  #p-iem .pagedots i.on{background:#5ec8a0}
+
+  /* Learn */
+  #p-iem .lnview{flex:1;min-height:0;overflow-y:auto;padding:16px 20px 24px;background:#0e1117}
+  #p-iem .lnview h1{font-family:var(--display);font-size:22px;font-weight:700;margin:0 0 4px;
+    color:#edf1f7;text-transform:none;letter-spacing:0}
+  #p-iem .ln-sub{margin:0 0 12px;font-size:12px;color:#8a97ab}
+  #p-iem #lnChips{margin-bottom:18px}
+  #p-iem .ln-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+  #p-iem .ln-list li{background:#171c26;border:1px solid #2c3444;border-radius:16px;padding:14px 16px}
+  #p-iem .ln-list b{display:block;font-size:14px;font-weight:700;color:#edf1f7;margin-bottom:5px}
+  #p-iem .ln-list span{font-size:12.5px;color:#8a97ab;line-height:1.5}
+  #p-iem .ln-list em{font-style:normal;display:inline-block;background:#1f2633;color:#5ec8a0;
+    font-size:10px;font-weight:700;border-radius:6px;padding:3px 8px;margin-bottom:8px}
+  #p-iem .coachbar{display:none}
+}
+
 @media (prefers-reduced-motion:reduce){#p-iem *{transition:none!important}}
 
 /* ---------- reflection journal (15 Sep 2026) ---------- */
@@ -3320,26 +3667,20 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
 <h1 class="sr-only">IEM Mix Room &mdash; in-ear mix simulator</h1>
 <div id="app">
   <div class="topbar">
-    <div class="brand"><b>IEM MIX ROOM</b><span>Awaken Audio</span></div>
+    <div class="brand"><b>IEM MIX ROOM</b><span>Build your own in-ear mix</span></div>
+    <div class="tbgap"></div>
 
     <div class="viewsw" id="viewsw">
-      <button data-v="ch" class="on"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="2" height="14"/><rect x="5" y="1" width="2" height="14"/><rect x="9" y="1" width="2" height="14"/><rect x="13" y="1" width="2" height="14"/></svg>Channels</button>
-      <button data-v="gr"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Groups View</button>
+      <button data-v="gr">Groups</button>
+      <button data-v="ch" class="on">Channels</button>
+      <button data-v="gd">Guided</button>
     </div>
-
-    <div class="transport">
-      <button class="tbtn play" id="btnPlay" title="Play / Pause (Space)"><svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z"/></svg></button>
-      <button class="tbtn" id="btnStop" title="Back to start"><svg viewBox="0 0 16 16"><path d="M3 3h10v10H3z"/></svg></button>
-      <button class="tbtn loop on" id="btnLoop" title="Loop"><svg viewBox="0 0 16 16"><path d="M4 3h8v2.2L15 3.6 12 1.2v2H2v4.3h2zM12 13H4v-2.2L1 12.4 4 14.8v-2h10V8.5h-2z"/></svg></button>
-    </div>
-    <div class="clock" id="clock"><b>0:00</b> / 0:00</div>
-    <div class="scrub"><input type="range" class="bar" id="scrub" min="0" max="1000" value="0"></div>
 
     <div class="topright">
-      <button class="ghost big" id="btnAssign">⊞ Assign Groups</button>
+      <button class="ghost big" id="btnAssign">Assign Groups</button>
       <button class="ghost more" id="btnMore" aria-label="More controls">•••</button>
       <div class="tools" id="tools">
-        <button class="ghost" id="btnMixes">Mixes</button>
+        <button class="ghost" id="btnMixes">Snapshot</button>
         <button class="ghost" id="btnStems">Load Stems</button>
         <button class="ghost" id="btnAdv">Advanced</button>
         <button class="ghost" id="btnClearSolo" hidden>Clear Solo</button>
@@ -3348,10 +3689,74 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     </div>
   </div>
 
+  <div class="tportbar">
+    <button class="playpill" id="btnPlay" title="Play / Pause (Space)"><svg viewBox="0 0 16 16"><path d="M3 2l11 6-11 6z"/></svg><span>Play stems</span></button>
+    <button class="looppill on" id="btnLoop" title="Loop">Loop ON</button>
+    <button class="tbtn" id="btnStop" title="Back to start"><svg viewBox="0 0 16 16"><path d="M3 3h10v10H3z"/></svg></button>
+    <div class="scrub"><input type="range" class="bar" id="scrub" min="0" max="1000" value="0"></div>
+    <div class="clock" id="clock"><b>0:00</b> / 0:00</div>
+  </div>
+
+  <div class="banknav" id="banknav" hidden></div>
+
   <div class="stage">
     <div class="wallwrap" id="wallwrap">
       <div class="rotate-hint" id="rotHint">↻ Turn your phone sideways for the full board</div>
       <div class="wall" id="wall"></div>
+    </div>
+
+    <div class="mgroups" id="mgroups" hidden>
+      <div class="mg-head">
+        <div>
+          <h1>My Mix</h1>
+          <p id="mgRole">Worship Leader</p>
+        </div>
+        <span class="mg-gap"></span>
+        <div class="mg-sel"><b>MIX SELECT</b><span>Aux 1 · IEM</span></div>
+      </div>
+      <div class="mg-body">
+        <div class="mg-grid" id="mgGrid"></div>
+        <div class="mg-master">
+          <div class="mg-mlbl"><b>MASTER</b><span>IEM</span></div>
+          <div class="mg-meter" id="mgMeter"><u id="mgKnob"></u></div>
+          <button class="mg-mute" id="mgMute">MUTE</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lnview" id="lnview" hidden>
+      <h1>Learn</h1>
+      <p class="ln-sub">Pick the seat you actually play, then read the five.</p>
+      <div class="gd-chips" id="lnChips"></div>
+      <ol class="ln-list" id="lnList"></ol>
+    </div>
+
+    <div class="gdview" id="gdview" hidden>
+      <div class="gd-head">
+        <div class="gd-title">
+          <h1>My Mix</h1>
+          <p id="gdRole">You’re mixing as: Worship Leader</p>
+        </div>
+        <span class="gd-gap"></span>
+        <button class="ghost" id="gdEngineer">Show engineer view</button>
+        <button class="ghost" id="gdReset">Reset</button>
+      </div>
+      <div class="gd-scn">
+        <span class="gd-scnlbl">Start from</span>
+        <div class="gd-chips" id="gdChips"></div>
+      </div>
+      <div class="gd-body">
+        <div class="gd-cards" id="gdCards"></div>
+        <aside class="gd-rail">
+          <h3>WHY THIS MIX</h3>
+          <p id="gdWhy">Pick a seat above and this explains the mix it loaded.</p>
+          <hr>
+          <h3>TRY THIS</h3>
+          <div class="gd-tips" id="gdTips"></div>
+          <span class="gd-gap"></span>
+          <button class="gd-compare" id="gdCompare"><b>Compare to the MD’s mix</b><span>See where you differ</span></button>
+        </aside>
+      </div>
     </div>
 
     <div class="gview" id="gview" hidden>
@@ -3373,6 +3778,23 @@ footer small{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-tr
     <span class="lbl">Master Volume</span>
     <div class="mmeter"><i id="mL"></i><i id="mR"></i></div>
     <span class="mdb" id="masterDb">0.0</span>
+  </div>
+
+  <div class="pagedots" id="pagedots" hidden></div>
+
+  <div class="tabbar" id="tabbar" hidden>
+    <button data-v="gr"><i>●</i><span>Groups</span></button>
+    <button data-v="ch" class="on"><i>▥</i><span>Channels</span></button>
+    <button data-v="ln"><i>✱</i><span>Learn</span></button>
+  </div>
+
+  <div class="coachbar" id="coachbar" hidden>
+    <span class="cstep" id="coachStep">STEP 1 OF 5</span>
+    <span class="ctext" id="coachText"></span>
+    <span class="cgap"></span>
+    <button class="clink" id="coachPrev" hidden>Back</button>
+    <button class="clink solid" id="coachNext">Next</button>
+    <button class="clink" id="coachSkip">Skip guide</button>
   </div>
 </div>
 
